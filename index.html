@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Blackjack Online Realtime (Split & End Result Pop-up)</title>
+  <title>Blackjack Online Realtime (Instant Bandar 21 & Fixed Result Pop-up)</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- PeerJS for WebRTC Realtime -->
@@ -80,7 +80,7 @@
 
       <div class="text-4xl mb-2">♠️</div>
       <h1 class="text-2xl md:text-3xl font-black text-amber-400 font-cinzel tracking-wider mb-1">BLACKJACK ONLINE</h1>
-      <p class="text-xs text-slate-400 mb-6">Realtime WebRTC • Fitur Split • Hasil Game Pop-up</p>
+      <p class="text-xs text-slate-400 mb-6">Realtime WebRTC • Instant Bandar Blackjack • Universal Pop-up</p>
 
       <div class="space-y-3">
         <button onclick="openCreateHostModal()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-4 px-4 rounded-2xl text-xs md:text-sm uppercase shadow-lg transition active:scale-95 flex items-center justify-center gap-2">
@@ -92,7 +92,7 @@
         </button>
       </div>
 
-      <p class="text-[11px] text-slate-500 mt-6">Versi Realtime • 1 Perangkat Max 1 Kursi</p>
+      <p class="text-[11px] text-slate-500 mt-6">Versi Realtime • Instant Win Detection</p>
     </div>
   </div>
 
@@ -157,7 +157,7 @@
     <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
       <div class="text-center">
         <div class="text-4xl sm:text-7xl font-cinzel text-amber-300 font-black tracking-widest">BLACKJACK</div>
-        <div class="text-[10px] sm:text-sm font-bold text-amber-400 tracking-widest uppercase mt-1">WebRTC Realtime • Fitur Split</div>
+        <div class="text-[10px] sm:text-sm font-bold text-amber-400 tracking-widest uppercase mt-1">WebRTC Realtime • Universal Pop-up</div>
       </div>
     </div>
 
@@ -187,7 +187,7 @@
     <div id="seatsGrid" class="relative z-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3"></div>
   </main>
 
-  <!-- CONTROLS FOOTER (FIXED STICKY BOTTOM FOR MOBILE) -->
+  <!-- CONTROLS FOOTER -->
   <footer class="fixed md:relative bottom-0 left-0 right-0 z-40 bg-slate-900/95 border-t md:border border-slate-800 md:rounded-2xl p-2.5 sm:p-4 max-w-6xl w-full mx-auto flex flex-col sm:flex-row justify-between items-center gap-2 shadow-2xl backdrop-blur">
     <div class="text-[11px] sm:text-xs text-slate-400 font-semibold flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-start">
       <span class="flex items-center gap-1.5">
@@ -211,7 +211,6 @@
         <span>✋</span> STAND
       </button>
 
-      <!-- TOMBOL SPLIT (Hanya Aktif Jika Memenuhi Syarat Card Same Value) -->
       <button id="splitBtn" onclick="sendOrRunAction('SPLIT')" disabled class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-black px-3 sm:px-5 py-2.5 rounded-xl text-xs uppercase shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center justify-center gap-1">
         <span>✂️</span> SPLIT
       </button>
@@ -521,15 +520,21 @@
       const title = document.getElementById('resultModalTitle');
       const body = document.getElementById('resultModalBody');
 
+      const isBankerBlackjack = (bankerCards.length === 2 && calculateScore(bankerCards) === 21);
+
       if (isHost) {
-        // BANDAR POV POP-UP (REKAP SEMUA PLAYER)
-        icon.innerText = "👑";
-        title.innerText = "HASIL RONDE BANDAR";
+        // BANDAR POV POP-UP
+        icon.innerText = isBankerBlackjack ? "👑" : "🏆";
+        title.innerText = isBankerBlackjack ? "👑 BANDAR BLACKJACK (21)!" : "HASIL RONDE BANDAR";
         
         const activePlayers = seats.filter(s => s !== null);
         if (activePlayers.length === 0) {
           body.innerHTML = "<p class='text-slate-400'>Belum ada pemain di meja.</p>";
         } else {
+          let headerText = isBankerBlackjack ? 
+            `<div class='bg-amber-500/20 border border-amber-500/40 p-2.5 rounded-xl text-amber-300 font-extrabold text-xs mb-3'>Bandar mendapatkan 21 (Blackjack) di 2 kartu awal! Bandar Otomatis Menang.</div>` : 
+            `<p class="text-xs text-slate-400 mb-2">Rekap Hasil Pertandingan Pemain:</p>`;
+
           let listHTML = activePlayers.map(s => {
             let color = s.status.includes('MENANG') ? 'text-emerald-400 font-bold' : 
                         s.status.includes('KALAH') ? 'text-rose-400 font-bold' : 'text-slate-300 font-semibold';
@@ -538,38 +543,58 @@
               <span class="${color}">${s.status}</span>
             </div>`;
           }).join('');
-          body.innerHTML = `<p class="text-xs text-slate-400 mb-2">Rekap Hasil Pertandingan Pemain:</p>` + listHTML;
+          body.innerHTML = headerText + listHTML;
         }
       } else {
-        // PLAYER POV POP-UP (TAILORED FOR MY SEAT)
+        // PLAYER POV POP-UP
         if (mySeatIndex !== null && seats[mySeatIndex]) {
           const mySeat = seats[mySeatIndex];
-          if (mySeat.status.includes('MENANG')) {
-            icon.innerText = "🎉";
-            title.innerText = "SELAMAT! ANDA MENANG";
-            body.innerHTML = `<div class="bg-emerald-950/80 border border-emerald-500/40 p-4 rounded-2xl text-emerald-300">
-              <p class="text-base font-extrabold">+2 POIN DITAMBAHKAN</p>
-              <p class="text-xs text-slate-300 mt-1">Kartu Anda berhasil mengalahkan Bandar!</p>
-            </div>`;
-          } else if (mySeat.status.includes('KALAH')) {
-            icon.innerText = "💥";
-            title.innerText = "SAYANG SEKALI! ANDA KALAH";
-            body.innerHTML = `<div class="bg-rose-950/80 border border-rose-500/40 p-4 rounded-2xl text-rose-300">
-              <p class="text-base font-extrabold">-2 POIN DIKURANGI</p>
-              <p class="text-xs text-slate-300 mt-1">Tetap semangat! Coba lagi di ronde berikutnya.</p>
-            </div>`;
+          if (isBankerBlackjack) {
+            if (mySeat.status.includes('SERI')) {
+              icon.innerText = "🤝";
+              title.innerText = "Dua-duanya BLACKJACK!";
+              body.innerHTML = `<div class="bg-slate-800 border border-slate-700 p-4 rounded-2xl text-slate-200">
+                <p class="text-base font-extrabold">SERI (0 POIN)</p>
+                <p class="text-xs text-slate-400 mt-1">Anda dan Bandar sama-sama mendapatkan Blackjack 21 di awal.</p>
+              </div>`;
+            } else {
+              icon.innerText = "👑";
+              title.innerText = "BANDAR BLACKJACK (21)!";
+              body.innerHTML = `<div class="bg-rose-950/80 border border-rose-500/40 p-4 rounded-2xl text-rose-300">
+                <p class="text-base font-extrabold">BANDAR MENANG AUTOMATIS (-2 POIN)</p>
+                <p class="text-xs text-slate-300 mt-1">Bandar mendapatkan Blackjack 21 di 2 kartu awal.</p>
+              </div>`;
+            }
           } else {
-            icon.innerText = "🤝";
-            title.innerText = "HASIL SERI (PUSH)";
-            body.innerHTML = `<div class="bg-slate-800 border border-slate-700 p-4 rounded-2xl text-slate-200">
-              <p class="text-base font-extrabold">0 POIN (TIDAK BERUBAH)</p>
-              <p class="text-xs text-slate-400 mt-1">Nilai kartu Anda sama dengan Bandar.</p>
-            </div>`;
+            if (mySeat.status.includes('MENANG')) {
+              icon.innerText = "🎉";
+              title.innerText = "SELAMAT! ANDA MENANG";
+              body.innerHTML = `<div class="bg-emerald-950/80 border border-emerald-500/40 p-4 rounded-2xl text-emerald-300">
+                <p class="text-base font-extrabold">+2 POIN DITAMBAHKAN</p>
+                <p class="text-xs text-slate-300 mt-1">Kartu Anda berhasil mengalahkan Bandar!</p>
+              </div>`;
+            } else if (mySeat.status.includes('KALAH')) {
+              icon.innerText = "💥";
+              title.innerText = "SAYANG SEKALI! ANDA KALAH";
+              body.innerHTML = `<div class="bg-rose-950/80 border border-rose-500/40 p-4 rounded-2xl text-rose-300">
+                <p class="text-base font-extrabold">-2 POIN DIKURANGI</p>
+                <p class="text-xs text-slate-300 mt-1">Bandar Menang! Tetap semangat di ronde berikutnya.</p>
+              </div>`;
+            } else {
+              icon.innerText = "🤝";
+              title.innerText = "HASIL SERI (PUSH)";
+              body.innerHTML = `<div class="bg-slate-800 border border-slate-700 p-4 rounded-2xl text-slate-200">
+                <p class="text-base font-extrabold">0 POIN (TIDAK BERUBAH)</p>
+                <p class="text-xs text-slate-400 mt-1">Nilai kartu Anda sama dengan Bandar.</p>
+              </div>`;
+            }
           }
         } else {
-          icon.innerText = "👀";
-          title.innerText = "RONDE SELESAI";
-          body.innerHTML = "<p class='text-slate-400 text-xs'>Ronde telah berakhir. Silakan tunggu ronde selanjutnya!</p>";
+          icon.innerText = isBankerBlackjack ? "👑" : "👀";
+          title.innerText = isBankerBlackjack ? "BANDAR BLACKJACK (21)!" : "RONDE SELESAI";
+          body.innerHTML = isBankerBlackjack ? 
+            "<p class='text-amber-300 font-bold text-xs'>Bandar mendapatkan 21 di 2 kartu awal dan memenangkan ronde ini!</p>" : 
+            "<p class='text-slate-400 text-xs'>Ronde telah berakhir. Silakan tunggu ronde selanjutnya!</p>";
         }
       }
 
@@ -669,6 +694,9 @@
         return;
       }
 
+      // RESET MODAL FLAG UNTUK HOST AGAR POP-UP MUNCUL DI SETIAP GAME!
+      lastShownEndPhaseModal = false;
+
       gamePhase = 'PLAYERS_TURN';
       bankerCards = [getRandomCard(), getRandomCard()];
 
@@ -681,6 +709,12 @@
           s.status = 'Giliran...';
         }
       });
+
+      // FITUR BARU: JIKA BANDAR MENDAPATKAN 21 (BLACKJACK) DI 2 KARTU AWAL -> INSTANT AUTOMATIC WIN!
+      if (calculateScore(bankerCards) === 21) {
+        finishRound();
+        return;
+      }
 
       activeSeatTurn = seats.findIndex(s => s !== null);
       startTimer();
@@ -946,7 +980,6 @@
             </div>
             <div class="flex gap-1 justify-center my-1.5 sm:my-2 cards-scroll overflow-x-auto w-full min-h-[76px] sm:min-h-[100px] items-center">${cardsHTML}</div>
             
-            <!-- INFORMASI TOTAL NILAI KARTU PEMAIN -->
             <div class="text-[10px] font-extrabold text-amber-300 bg-slate-950/80 px-2 py-0.5 rounded-md border border-slate-800 w-full mb-0.5">
               ${totalScoreBadge}
             </div>
@@ -1000,7 +1033,6 @@
       document.getElementById('hitBtn').disabled = !isMyTurnToPlay;
       document.getElementById('standBtn').disabled = !isMyTurnToPlay;
 
-      // SPLIT BUTTON STATE (Hanya Aktif Jika Giliran Saya & Punya 2 Kartu Nilai Sama)
       const mySeat = (mySeatIndex !== null) ? seats[mySeatIndex] : null;
       const canSplitCard = isMyTurnToPlay && canSplit(mySeat);
       document.getElementById('splitBtn').disabled = !canSplitCard;
