@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Blackjack Multiplayer (Room Code & Link Sync)</title>
+  <title>Blackjack Multiplayer (PeerJS Realtime Mabar)</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- PeerJS library for WebRTC Realtime P2P Mabar -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600;800&display=swap');
     
@@ -58,8 +61,11 @@
         <span class="text-2xl">♠️</span>
         <h1 class="text-xl md:text-2xl font-black text-amber-400 font-cinzel tracking-wider">BLACKJACK ONLINE</h1>
         <span id="roleBadge" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Bandar (Host)</span>
+        <span id="connStatusBadge" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase flex items-center gap-1">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> PeerJS Active
+        </span>
       </div>
-      <p class="text-xs text-slate-400 mt-0.5">Fixed Banker • POV Security • Catatan Skor (+2 / -2)</p>
+      <p class="text-xs text-slate-400 mt-0.5">Realtime WebRTC • Fixed Banker • Catatan Skor (+2 / -2)</p>
     </div>
 
     <div class="flex items-center flex-wrap gap-2.5">
@@ -106,7 +112,7 @@
         <span>📋</span> CATATAN POIN PEMAIN (Menang: +2 | Kalah: -2)
       </h3>
       <div class="flex items-center gap-3">
-        <button onclick="resetAllScores()" class="text-xs text-rose-400 hover:underline font-semibold">Reset Poin</button>
+        <button id="resetScoreBtn" onclick="resetAllScores()" class="text-xs text-rose-400 hover:underline font-semibold">Reset Poin</button>
         <button onclick="toggleNotesPanel()" class="text-slate-400 hover:text-white font-bold text-sm">✕</button>
       </div>
     </div>
@@ -120,7 +126,7 @@
     <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
       <div class="text-center">
         <div class="text-7xl font-cinzel text-amber-300 font-black tracking-widest">BLACKJACK</div>
-        <div class="text-sm font-bold text-amber-400 tracking-widest uppercase mt-2">Fixed Banker • Room Sync Mode</div>
+        <div class="text-sm font-bold text-amber-400 tracking-widest uppercase mt-2">WebRTC Realtime Mabar • Peer2Peer</div>
       </div>
     </div>
 
@@ -145,7 +151,7 @@
     <!-- STATUS LOG BAR (MIDDLE) -->
     <div class="relative z-10 text-center my-3">
       <div id="statusNotice" class="inline-block bg-slate-900/90 border border-slate-700/80 px-5 py-2 rounded-full text-xs font-bold text-amber-300 shadow-xl backdrop-blur">
-        Silakan duduk di salah satu kursi untuk bergabung!
+        Menghubungkan ke ruangan...
       </div>
     </div>
 
@@ -163,24 +169,21 @@
 
     <!-- Action Buttons -->
     <div class="flex flex-wrap gap-2">
-      <button id="dealBtn" onclick="startDeal()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs uppercase shadow-lg transition active:scale-95">
+      <button id="dealBtn" onclick="sendOrRunAction('DEAL')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs uppercase shadow-lg transition active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed">
         🎴 Bagikan Kartu (Deal)
       </button>
-      <button id="hitBtn" onclick="handlePlayerAction('HIT')" disabled class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 disabled:cursor-not-allowed transition active:scale-95">
+      <button id="hitBtn" onclick="sendOrRunAction('HIT')" disabled class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 disabled:cursor-not-allowed transition active:scale-95">
         Hit
       </button>
-      <button id="standBtn" onclick="handlePlayerAction('STAND')" disabled class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 disabled:cursor-not-allowed transition active:scale-95">
+      <button id="standBtn" onclick="sendOrRunAction('STAND')" disabled class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 disabled:cursor-not-allowed transition active:scale-95">
         Stand
-      </button>
-      <button id="splitBtn" onclick="handlePlayerAction('SPLIT')" disabled class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 disabled:cursor-not-allowed transition active:scale-95">
-        Split
       </button>
 
       <!-- Host Manual Actions -->
-      <button id="bankerHitBtn" onclick="handleBankerAction('HIT')" disabled class="hidden bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 transition">
+      <button id="bankerHitBtn" onclick="sendOrRunAction('BANKER_HIT')" disabled class="hidden bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 transition">
         Hit Bandar
       </button>
-      <button id="bankerStandBtn" onclick="handleBankerAction('STAND')" disabled class="hidden bg-slate-700 hover:bg-slate-600 text-amber-300 font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 transition">
+      <button id="bankerStandBtn" onclick="sendOrRunAction('BANKER_STAND')" disabled class="hidden bg-slate-700 hover:bg-slate-600 text-amber-300 font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 transition">
         Stand Bandar
       </button>
     </div>
@@ -204,7 +207,7 @@
     <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
       <h3 class="text-lg font-bold text-amber-400 font-cinzel mb-1">🔑 Masukkan Kode Room</h3>
       <p class="text-xs text-slate-400 mb-4">Minta Kode Room dari temanmu lalu masukkan di bawah ini:</p>
-      <input type="text" id="inputRoomCode" placeholder="Contoh: BJ-89X2" class="w-full bg-slate-800 border border-slate-700 text-amber-300 uppercase font-mono font-bold rounded-xl px-3.5 py-2.5 text-center text-base mb-4 focus:outline-none focus:border-amber-400">
+      <input type="text" id="inputRoomCode" placeholder="Contoh: BJ89X2" class="w-full bg-slate-800 border border-slate-700 text-amber-300 uppercase font-mono font-bold rounded-xl px-3.5 py-2.5 text-center text-base mb-4 focus:outline-none focus:border-amber-400">
       <div class="flex justify-end gap-2">
         <button onclick="closeJoinCodeModal()" class="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white">Batal</button>
         <button onclick="submitJoinRoomCode()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs shadow">Masuk Room</button>
@@ -212,32 +215,39 @@
     </div>
   </div>
 
-  <!-- SCRIPT LOGIC WITH ROOM & LINK SYNC -->
+  <!-- SCRIPT PEERJS REALTIME MULTIPLAYER -->
   <script>
     // READ URL PARAMETER FOR ROOM CODE
     const urlParams = new URLSearchParams(window.location.search);
-    let roomCode = urlParams.get('room');
+    let rawRoomCode = urlParams.get('room');
     let isHost = false;
 
-    if (!roomCode) {
-      // Pembuat Room Utama (Host)
-      roomCode = 'BJ-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    if (!rawRoomCode) {
+      rawRoomCode = 'BJ' + Math.random().toString(36).substring(2, 7).toUpperCase();
       isHost = true;
+    } else {
+      rawRoomCode = rawRoomCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
     }
 
-    document.getElementById('roomCodeText').innerText = roomCode;
+    const PEER_PREFIX = "BJONLINE_ROOM_";
+    const fullPeerId = PEER_PREFIX + rawRoomCode;
 
-    // Adjust Role & POV based on Host status
+    document.getElementById('roomCodeText').innerText = rawRoomCode;
+
+    // ROLE & POV SETUP
     if (!isHost) {
       document.getElementById('roleBadge').innerText = 'Pemain (Guest)';
       document.getElementById('roleBadge').className = 'bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase';
-      // Disable Host POV option for guest
       document.getElementById('hostPovOption').disabled = true;
       document.getElementById('hostPovOption').innerText = '🔒 Bandar (Host POV - Terkunci)';
       document.getElementById('povSelect').value = '0';
+      document.getElementById('resetScoreBtn').style.display = 'none';
     }
 
     let currentPOV = isHost ? 'HOST' : '0';
+    let mySeatIndex = null;
+
+    // CANONICAL STATE (MANAGED BY HOST)
     let seats = Array(6).fill(null);
     let bankerCards = [];
     let gamePhase = 'LOBBY'; 
@@ -246,7 +256,323 @@
     let timerInterval = null;
     let targetSeatForJoin = null;
 
-    // RENDER SEATS
+    // PEERJS NETWORK STATE
+    let peer = null;
+    let hostConnection = null; // For Guest: connection to Host
+    let guestConnections = []; // For Host: list of connected guest connections
+
+    function initNetwork() {
+      if (isHost) {
+        // HOST CREATES ROOM
+        peer = new Peer(fullPeerId);
+
+        peer.on('open', (id) => {
+          document.getElementById('statusNotice').innerText = `Ruangan siap! Kode Room: ${rawRoomCode}. Bagikan link ke teman untuk mabar.`;
+        });
+
+        peer.on('connection', (conn) => {
+          guestConnections.push(conn);
+          
+          conn.on('open', () => {
+            // Send current state to newly connected guest
+            broadcastState();
+          });
+
+          conn.on('data', (data) => {
+            handleGuestAction(data, conn);
+          });
+
+          conn.on('close', () => {
+            guestConnections = guestConnections.filter(c => c !== conn);
+          });
+        });
+
+        peer.on('error', (err) => {
+          if (err.type === 'unavailable-id') {
+            document.getElementById('statusNotice').innerText = `Kode room ${rawRoomCode} sedang dipakai. Membuat room baru...`;
+            rawRoomCode = 'BJ' + Math.random().toString(36).substring(2, 7).toUpperCase();
+            window.location.href = window.location.pathname + '?room=' + rawRoomCode;
+          } else {
+            console.error('PeerJS Error:', err);
+          }
+        });
+
+      } else {
+        // GUEST JOINS ROOM
+        peer = new Peer();
+
+        peer.on('open', (id) => {
+          document.getElementById('statusNotice').innerText = `Menghubungkan ke Host (Room: ${rawRoomCode})...`;
+          hostConnection = peer.connect(fullPeerId);
+
+          hostConnection.on('open', () => {
+            document.getElementById('statusNotice').innerText = `Berhasil terhubung ke Room ${rawRoomCode}! Silakan "DUDUK SINI".`;
+          });
+
+          hostConnection.on('data', (data) => {
+            if (data.type === 'SYNC_STATE') {
+              applySyncedState(data.state);
+            }
+          });
+
+          hostConnection.on('close', () => {
+            document.getElementById('statusNotice').innerText = `Koneksi ke Bandar terputus.`;
+          });
+        });
+
+        peer.on('error', (err) => {
+          document.getElementById('statusNotice').innerText = `Gagal terhubung ke Room ${rawRoomCode}. Pastikan Bandar sedang online.`;
+        });
+      }
+    }
+
+    // BROADCAST STATE FROM HOST TO ALL GUESTS
+    function broadcastState() {
+      if (!isHost) return;
+
+      const statePayload = {
+        seats: seats,
+        bankerCards: bankerCards,
+        gamePhase: gamePhase,
+        activeSeatTurn: activeSeatTurn,
+        turnTimer: turnTimer
+      };
+
+      guestConnections.forEach(conn => {
+        if (conn.open) {
+          conn.send({ type: 'SYNC_STATE', state: statePayload });
+        }
+      });
+
+      // Also render locally on Host
+      renderSeats();
+      renderBankerCards();
+      updateControls();
+    }
+
+    // APPLY SYNCED STATE ON GUEST
+    function applySyncedState(state) {
+      seats = state.seats;
+      bankerCards = state.bankerCards;
+      gamePhase = state.gamePhase;
+      activeSeatTurn = state.activeSeatTurn;
+      turnTimer = state.turnTimer;
+
+      renderSeats();
+      renderBankerCards();
+      updateControls();
+
+      if (gamePhase === 'PLAYERS_TURN' && activeSeatTurn !== -1 && seats[activeSeatTurn]) {
+        document.getElementById('statusNotice').innerText = `Giliran ${seats[activeSeatTurn].name} bertindak.`;
+      } else if (gamePhase === 'BANKER_TURN') {
+        document.getElementById('statusNotice').innerText = `Giliran Bandar bertindak.`;
+      } else if (gamePhase === 'END') {
+        document.getElementById('statusNotice').innerText = `Ronde Selesai! Poin telah diperbarui di Catatan Poin.`;
+      } else if (gamePhase === 'LOBBY') {
+        document.getElementById('statusNotice').innerText = `Room ${rawRoomCode} Siap! Silakan tekan DUDUK SINI.`;
+      }
+    }
+
+    // HANDLE GUEST ACTIONS RECEIVED BY HOST
+    function handleGuestAction(actionObj, conn) {
+      if (!isHost) return;
+
+      const { action, payload } = actionObj;
+
+      if (action === 'JOIN_SEAT') {
+        seats[payload.seatIndex] = {
+          name: payload.name,
+          cards: [],
+          scorePoints: 0,
+          status: 'Menunggu Game'
+        };
+        broadcastState();
+      } else if (action === 'HIT') {
+        if (activeSeatTurn === payload.seatIndex) {
+          handlePlayerAction('HIT');
+        }
+      } else if (action === 'STAND') {
+        if (activeSeatTurn === payload.seatIndex) {
+          handlePlayerAction('STAND');
+        }
+      }
+    }
+
+    // SEND OR EXECUTE ACTIONS
+    function sendOrRunAction(actionType) {
+      if (actionType === 'DEAL') {
+        if (isHost) startDeal();
+      } else if (actionType === 'HIT' || actionType === 'STAND') {
+        if (isHost) {
+          handlePlayerAction(actionType);
+        } else {
+          if (mySeatIndex !== null && activeSeatTurn === mySeatIndex && hostConnection && hostConnection.open) {
+            hostConnection.send({ action: actionType, payload: { seatIndex: mySeatIndex } });
+          }
+        }
+      } else if (actionType === 'BANKER_HIT' || actionType === 'BANKER_STAND') {
+        if (isHost) {
+          handleBankerAction(actionType === 'BANKER_HIT' ? 'HIT' : 'STAND');
+        }
+      }
+    }
+
+    // GAME ENGINE FUNCTIONS (RUNS ON HOST)
+    function calculateScore(cards) {
+      if (!cards || cards.length === 0) return 0;
+      let score = 0, aces = 0;
+      cards.forEach(c => {
+        if (['J','Q','K'].includes(c.rank)) score += 10;
+        else if (c.rank === 'A') { score += 11; aces += 1; }
+        else score += parseInt(c.rank);
+      });
+      while (score > 21 && aces > 0) { score -= 10; aces -= 1; }
+      return score;
+    }
+
+    function getRandomCard() {
+      const suits = ['♠', '♥', '♦', '♣'];
+      const ranks = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+      return { suit: suits[Math.floor(Math.random() * suits.length)], rank: ranks[Math.floor(Math.random() * ranks.length)] };
+    }
+
+    function startDeal() {
+      if (!isHost) return;
+      const activePlayers = seats.filter(s => s !== null);
+      if (activePlayers.length === 0) {
+        alert('Tidak ada pemain di meja! Harap tekan "DUDUK SINI" pada minimal 1 kursi.');
+        return;
+      }
+
+      gamePhase = 'PLAYERS_TURN';
+      bankerCards = [getRandomCard(), getRandomCard()];
+
+      seats.forEach(s => {
+        if (s) {
+          s.cards = [getRandomCard(), getRandomCard()];
+          s.status = 'Giliran...';
+        }
+      });
+
+      activeSeatTurn = seats.findIndex(s => s !== null);
+      
+      startTimer();
+      broadcastState();
+    }
+
+    function startTimer() {
+      if (!isHost) return;
+      clearInterval(timerInterval);
+      turnTimer = 20;
+      timerInterval = setInterval(() => {
+        turnTimer--;
+        broadcastState();
+        if (turnTimer <= 0) {
+          handlePlayerAction('STAND');
+        }
+      }, 1000);
+    }
+
+    function handlePlayerAction(action) {
+      if (!isHost || activeSeatTurn === -1 || !seats[activeSeatTurn]) return;
+
+      let player = seats[activeSeatTurn];
+
+      if (action === 'HIT') {
+        player.cards.push(getRandomCard());
+        let score = calculateScore(player.cards);
+        if (score > 21) {
+          player.status = 'BUST (>21)';
+          nextPlayerTurn();
+        } else if (score === 21) {
+          player.status = 'BLACKJACK (21)';
+          nextPlayerTurn();
+        } else {
+          startTimer();
+        }
+      } else if (action === 'STAND') {
+        player.status = `Total: ${calculateScore(player.cards)}`;
+        nextPlayerTurn();
+      }
+
+      broadcastState();
+    }
+
+    function nextPlayerTurn() {
+      if (!isHost) return;
+      clearInterval(timerInterval);
+
+      let nextIdx = -1;
+      for (let i = activeSeatTurn + 1; i < seats.length; i++) {
+        if (seats[i] !== null && seats[i].status.includes('Giliran')) {
+          nextIdx = i;
+          break;
+        }
+      }
+
+      if (nextIdx !== -1) {
+        activeSeatTurn = nextIdx;
+        startTimer();
+      } else {
+        activeSeatTurn = -1;
+        startBankerTurn();
+      }
+
+      broadcastState();
+    }
+
+    function startBankerTurn() {
+      if (!isHost) return;
+      gamePhase = 'BANKER_TURN';
+      startTimer();
+      broadcastState();
+    }
+
+    function handleBankerAction(action) {
+      if (!isHost) return;
+      if (action === 'HIT') {
+        bankerCards.push(getRandomCard());
+        let bScore = calculateScore(bankerCards);
+        if (bScore >= 21) {
+          finishRound();
+        } else {
+          startTimer();
+        }
+      } else if (action === 'STAND') {
+        finishRound();
+      }
+      broadcastState();
+    }
+
+    function finishRound() {
+      if (!isHost) return;
+      clearInterval(timerInterval);
+      gamePhase = 'END';
+
+      let bankerScore = calculateScore(bankerCards);
+
+      seats.forEach(s => {
+        if (s) {
+          let pScore = calculateScore(s.cards);
+          if (pScore > 21) {
+            s.status = 'KALAH (-2)';
+            s.scorePoints -= 2;
+          } else if (bankerScore > 21 || pScore > bankerScore) {
+            s.status = 'MENANG (+2)';
+            s.scorePoints += 2;
+          } else if (pScore < bankerScore) {
+            s.status = 'KALAH (-2)';
+            s.scorePoints -= 2;
+          } else {
+            s.status = 'SERI (0)';
+          }
+        }
+      });
+
+      broadcastState();
+    }
+
+    // UI RENDERING
     function renderSeats() {
       const grid = document.getElementById('seatsGrid');
       grid.innerHTML = '';
@@ -295,108 +621,6 @@
       renderScoresTable();
     }
 
-    function calculateScore(cards) {
-      if (!cards || cards.length === 0) return 0;
-      let score = 0, aces = 0;
-      cards.forEach(c => {
-        if (['J','Q','K'].includes(c.rank)) score += 10;
-        else if (c.rank === 'A') { score += 11; aces += 1; }
-        else score += parseInt(c.rank);
-      });
-      while (score > 21 && aces > 0) { score -= 10; aces -= 1; }
-      return score;
-    }
-
-    function getRandomCard() {
-      const suits = ['♠', '♥', '♦', '♣'];
-      const ranks = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
-      return { suit: suits[Math.floor(Math.random() * suits.length)], rank: ranks[Math.floor(Math.random() * ranks.length)] };
-    }
-
-    // JOIN SEAT MODAL
-    function openJoinModal(seatIdx) {
-      targetSeatForJoin = seatIdx;
-      document.getElementById('modalSeatTitle').innerText = `Kursi ${seatIdx + 1}`;
-      document.getElementById('playerNameInput').value = '';
-      document.getElementById('joinSeatModal').classList.remove('hidden');
-    }
-
-    function closeJoinModal() {
-      document.getElementById('joinSeatModal').classList.add('hidden');
-    }
-
-    function confirmJoinSeat() {
-      const input = document.getElementById('playerNameInput').value.trim();
-      const name = input || `Pemain ${targetSeatForJoin + 1}`;
-
-      seats[targetSeatForJoin] = {
-        name: name,
-        cards: [],
-        scorePoints: 0,
-        status: 'Menunggu Game'
-      };
-
-      if (!isHost) {
-        document.getElementById('povSelect').value = targetSeatForJoin.toString();
-        currentPOV = targetSeatForJoin.toString();
-      }
-
-      closeJoinModal();
-      renderSeats();
-      document.getElementById('statusNotice').innerText = `${name} telah bergabung di Kursi ${targetSeatForJoin + 1}`;
-    }
-
-    // JOIN ROOM CODE MODAL
-    function openJoinCodeModal() {
-      document.getElementById('inputRoomCode').value = '';
-      document.getElementById('joinCodeModal').classList.remove('hidden');
-    }
-
-    function closeJoinCodeModal() {
-      document.getElementById('joinCodeModal').classList.add('hidden');
-    }
-
-    function submitJoinRoomCode() {
-      const code = document.getElementById('inputRoomCode').value.trim().toUpperCase();
-      if (!code) {
-        alert('Masukkan Kode Room terlebih dahulu!');
-        return;
-      }
-      // Redirect with room param
-      const url = new URL(window.location.href);
-      url.searchParams.set('room', code);
-      window.location.href = url.href;
-    }
-
-    // DEAL CARDS
-    function startDeal() {
-      const activePlayers = seats.filter(s => s !== null);
-      if (activePlayers.length === 0) {
-        alert('Tidak ada pemain di meja! Harap tekan "DUDUK SINI" pada minimal 1 kursi.');
-        return;
-      }
-
-      gamePhase = 'PLAYERS_TURN';
-      bankerCards = [getRandomCard(), getRandomCard()];
-
-      seats.forEach(s => {
-        if (s) {
-          s.cards = [getRandomCard(), getRandomCard()];
-          s.status = 'Giliran...';
-        }
-      });
-
-      activeSeatTurn = seats.findIndex(s => s !== null);
-      
-      renderBankerCards();
-      renderSeats();
-      updateControls();
-      startTimer();
-
-      document.getElementById('gamePhaseText').innerText = 'Giliran Pemain';
-      document.getElementById('statusNotice').innerText = `Ronde dimulai! Giliran ${seats[activeSeatTurn].name}`;
-    }
-
     function renderBankerCards() {
       const area = document.getElementById('bankerCardsArea');
       area.innerHTML = '';
@@ -423,152 +647,21 @@
       }
     }
 
-    function startTimer() {
-      clearInterval(timerInterval);
-      turnTimer = 20;
-      timerInterval = setInterval(() => {
-        turnTimer--;
-        renderSeats();
-        if (turnTimer <= 0) {
-          handlePlayerAction('STAND');
-        }
-      }, 1000);
-    }
-
-    function handlePlayerAction(action) {
-      if (activeSeatTurn === -1 || !seats[activeSeatTurn]) return;
-
-      let player = seats[activeSeatTurn];
-
-      if (action === 'HIT') {
-        player.cards.push(getRandomCard());
-        let score = calculateScore(player.cards);
-        if (score > 21) {
-          player.status = 'BUST (>21)';
-          nextPlayerTurn();
-        } else if (score === 21) {
-          player.status = 'BLACKJACK (21)';
-          nextPlayerTurn();
-        } else {
-          startTimer();
-        }
-      } else if (action === 'STAND') {
-        player.status = `Total: ${calculateScore(player.cards)}`;
-        nextPlayerTurn();
-      } else if (action === 'SPLIT') {
-        alert('Aksi Split dieksekusi.');
-        startTimer();
-      }
-
-      renderSeats();
-    }
-
-    function nextPlayerTurn() {
-      clearInterval(timerInterval);
-
-      let nextIdx = -1;
-      for (let i = activeSeatTurn + 1; i < seats.length; i++) {
-        if (seats[i] !== null && seats[i].status.includes('Giliran')) {
-          nextIdx = i;
-          break;
-        }
-      }
-
-      if (nextIdx !== -1) {
-        activeSeatTurn = nextIdx;
-        startTimer();
-        document.getElementById('statusNotice').innerText = `Giliran ${seats[activeSeatTurn].name}`;
-      } else {
-        activeSeatTurn = -1;
-        startBankerTurn();
-      }
-
-      renderSeats();
-      updateControls();
-    }
-
-    function startBankerTurn() {
-      gamePhase = 'BANKER_TURN';
-      document.getElementById('gamePhaseText').innerText = 'Giliran Bandar';
-      renderBankerCards();
-
-      if (currentPOV === 'HOST') {
-        document.getElementById('statusNotice').innerText = 'Giliran Bandar (Host). Pilih Hit Bandar atau Stand Bandar.';
-        startTimer();
-      } else {
-        document.getElementById('statusNotice').innerText = 'Giliran Bandar sedang berjalan...';
-        setTimeout(() => {
-          autoBankerAction();
-        }, 1500);
-      }
-      updateControls();
-    }
-
-    function handleBankerAction(action) {
-      if (action === 'HIT') {
-        bankerCards.push(getRandomCard());
-        renderBankerCards();
-        let bScore = calculateScore(bankerCards);
-        if (bScore >= 21) {
-          finishRound();
-        }
-      } else if (action === 'STAND') {
-        finishRound();
-      }
-    }
-
-    function autoBankerAction() {
-      let bScore = calculateScore(bankerCards);
-      if (bScore < 17) {
-        bankerCards.push(getRandomCard());
-        renderBankerCards();
-        setTimeout(autoBankerAction, 1000);
-      } else {
-        finishRound();
-      }
-    }
-
-    function finishRound() {
-      clearInterval(timerInterval);
-      gamePhase = 'END';
-      document.getElementById('gamePhaseText').innerText = 'Ronde Selesai';
-      renderBankerCards();
-
-      let bankerScore = calculateScore(bankerCards);
-
-      seats.forEach(s => {
-        if (s) {
-          let pScore = calculateScore(s.cards);
-          if (pScore > 21) {
-            s.status = 'KALAH (-2)';
-            s.scorePoints -= 2;
-          } else if (bankerScore > 21 || pScore > bankerScore) {
-            s.status = 'MENANG (+2)';
-            s.scorePoints += 2;
-          } else if (pScore < bankerScore) {
-            s.status = 'KALAH (-2)';
-            s.scorePoints -= 2;
-          } else {
-            s.status = 'SERI (0)';
-          }
-        }
-      });
-
-      renderSeats();
-      updateControls();
-      document.getElementById('statusNotice').innerText = 'Ronde selesai! Skor telah ditambahkan ke Catatan Poin.';
-    }
-
     function updateControls() {
       const isPlayerTurnPhase = (gamePhase === 'PLAYERS_TURN');
       const isBankerTurnPhase = (gamePhase === 'BANKER_TURN');
 
+      // Deal button only for Host
+      document.getElementById('dealBtn').style.display = isHost ? 'inline-block' : 'none';
       document.getElementById('dealBtn').disabled = (isPlayerTurnPhase || isBankerTurnPhase);
-      document.getElementById('hitBtn').disabled = !isPlayerTurnPhase;
-      document.getElementById('standBtn').disabled = !isPlayerTurnPhase;
-      document.getElementById('splitBtn').disabled = !isPlayerTurnPhase;
 
-      if (currentPOV === 'HOST' && isBankerTurnPhase) {
+      // Hit/Stand buttons enabled if it's my turn or Host
+      const isMyTurn = (mySeatIndex !== null && activeSeatTurn === mySeatIndex) || (isHost && isPlayerTurnPhase);
+      document.getElementById('hitBtn').disabled = (!isPlayerTurnPhase || !isMyTurn);
+      document.getElementById('standBtn').disabled = (!isPlayerTurnPhase || !isMyTurn);
+
+      // Host Manual Banker Actions
+      if (isHost && isBankerTurnPhase) {
         document.getElementById('bankerHitBtn').classList.remove('hidden');
         document.getElementById('bankerStandBtn').classList.remove('hidden');
         document.getElementById('bankerHitBtn').disabled = false;
@@ -577,6 +670,71 @@
         document.getElementById('bankerHitBtn').classList.add('hidden');
         document.getElementById('bankerStandBtn').classList.add('hidden');
       }
+
+      document.getElementById('gamePhaseText').innerText = 
+        gamePhase === 'LOBBY' ? 'Lobby (Menunggu Pemain)' :
+        gamePhase === 'PLAYERS_TURN' ? 'Giliran Pemain' :
+        gamePhase === 'BANKER_TURN' ? 'Giliran Bandar' : 'Ronde Selesai';
+    }
+
+    // MODAL HANDLERS
+    function openJoinModal(seatIdx) {
+      targetSeatForJoin = seatIdx;
+      document.getElementById('modalSeatTitle').innerText = `Kursi ${seatIdx + 1}`;
+      document.getElementById('playerNameInput').value = '';
+      document.getElementById('joinSeatModal').classList.remove('hidden');
+    }
+
+    function closeJoinModal() {
+      document.getElementById('joinSeatModal').classList.add('hidden');
+    }
+
+    function confirmJoinSeat() {
+      const input = document.getElementById('playerNameInput').value.trim();
+      const name = input || `Pemain ${targetSeatForJoin + 1}`;
+
+      mySeatIndex = targetSeatForJoin;
+
+      if (isHost) {
+        seats[targetSeatForJoin] = {
+          name: name,
+          cards: [],
+          scorePoints: 0,
+          status: 'Menunggu Game'
+        };
+        broadcastState();
+      } else {
+        if (hostConnection && hostConnection.open) {
+          hostConnection.send({
+            action: 'JOIN_SEAT',
+            payload: { seatIndex: targetSeatForJoin, name: name }
+          });
+        }
+        document.getElementById('povSelect').value = targetSeatForJoin.toString();
+        currentPOV = targetSeatForJoin.toString();
+      }
+
+      closeJoinModal();
+    }
+
+    function openJoinCodeModal() {
+      document.getElementById('inputRoomCode').value = '';
+      document.getElementById('joinCodeModal').classList.remove('hidden');
+    }
+
+    function closeJoinCodeModal() {
+      document.getElementById('joinCodeModal').classList.add('hidden');
+    }
+
+    function submitJoinRoomCode() {
+      const code = document.getElementById('inputRoomCode').value.trim().toUpperCase();
+      if (!code) {
+        alert('Masukkan Kode Room terlebih dahulu!');
+        return;
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.set('room', code);
+      window.location.href = url.href;
     }
 
     function changePOV(val) {
@@ -610,19 +768,21 @@
     }
 
     function resetAllScores() {
+      if (!isHost) return;
       seats.forEach(s => {
         if (s) s.scorePoints = 0;
       });
-      renderScoresTable();
+      broadcastState();
     }
 
     function copyRoomLink() {
-      const shareUrl = window.location.origin + window.location.pathname + '?room=' + roomCode;
+      const shareUrl = window.location.origin + window.location.pathname + '?room=' + rawRoomCode;
       navigator.clipboard.writeText(shareUrl);
-      alert('Link Room (' + roomCode + ') berhasil disalin! Bagikan link ini ke temanmu agar mereka langsung masuk ke room ini.');
+      alert('Link Room (' + rawRoomCode + ') berhasil disalin! Bagikan link ini ke temanmu agar mereka langsung mabar di room ini.');
     }
 
-    // INIT
+    // INIT NETWORK & GAME
+    initNetwork();
     renderSeats();
     updateControls();
   </script>
