@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Blackjack Online Realtime (Instant Bandar 21 & Fixed Result Pop-up)</title>
+  <title>Blackjack Online Realtime (Card Overwrite Fix & Google STUN Server)</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- PeerJS for WebRTC Realtime -->
@@ -28,7 +28,7 @@
       width: 46px;
       height: 68px;
       border-radius: 6px;
-      transition: all 0.2s ease;
+      transition: transform 0.3s ease, opacity 0.3s ease;
       box-shadow: 0 2px 6px rgba(0,0,0,0.5);
       flex-shrink: 0;
     }
@@ -66,6 +66,39 @@
       letter-spacing: 1px;
     }
 
+    /* Deck Shoe Visual Effect */
+    .deck-stack {
+      position: relative;
+      width: 46px;
+      height: 68px;
+    }
+    @media (min-width: 640px) {
+      .deck-stack {
+        width: 60px;
+        height: 88px;
+      }
+    }
+    .deck-card-layer {
+      position: absolute;
+      inset: 0;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #7f1d1d 0%, #360707 100%);
+      border: 1.5px solid #d97706;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.6);
+    }
+    .deck-layer-1 { transform: translate(0, 0); }
+    .deck-layer-2 { transform: translate(-3px, -3px); }
+    .deck-layer-3 { transform: translate(-6px, -6px); }
+
+    /* Flying Card Animation Element */
+    .flying-card {
+      position: fixed;
+      z-index: 9999;
+      pointer-events: none;
+      transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+    }
+
     .cards-scroll::-webkit-scrollbar { height: 4px; }
     .cards-scroll::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.3); border-radius: 4px; }
   </style>
@@ -80,7 +113,7 @@
 
       <div class="text-4xl mb-2">♠️</div>
       <h1 class="text-2xl md:text-3xl font-black text-amber-400 font-cinzel tracking-wider mb-1">BLACKJACK ONLINE</h1>
-      <p class="text-xs text-slate-400 mb-6">Realtime WebRTC • Instant Bandar Blackjack • Universal Pop-up</p>
+      <p class="text-xs text-slate-400 mb-6">Realtime WebRTC • Card Overwrite Fix • STUN Server</p>
 
       <div class="space-y-3">
         <button onclick="openCreateHostModal()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-4 px-4 rounded-2xl text-xs md:text-sm uppercase shadow-lg transition active:scale-95 flex items-center justify-center gap-2">
@@ -92,7 +125,7 @@
         </button>
       </div>
 
-      <p class="text-[11px] text-slate-500 mt-6">Versi Realtime • Instant Win Detection</p>
+      <p class="text-[11px] text-slate-500 mt-6">Versi Realtime • Fixed Hit Append</p>
     </div>
   </div>
 
@@ -157,23 +190,39 @@
     <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
       <div class="text-center">
         <div class="text-4xl sm:text-7xl font-cinzel text-amber-300 font-black tracking-widest">BLACKJACK</div>
-        <div class="text-[10px] sm:text-sm font-bold text-amber-400 tracking-widest uppercase mt-1">WebRTC Realtime • Universal Pop-up</div>
+        <div class="text-[10px] sm:text-sm font-bold text-amber-400 tracking-widest uppercase mt-1">WebRTC Realtime • Fixed Hit Append</div>
       </div>
     </div>
 
-    <!-- AREA BANDAR (TOP) -->
-    <div class="relative z-10 flex flex-col items-center">
-      <div class="bg-slate-900/90 border border-amber-500/50 rounded-2xl p-2.5 sm:p-4 text-center w-full max-w-[280px] sm:max-w-xs shadow-2xl backdrop-blur">
-        <div class="inline-block bg-amber-500 text-slate-950 text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-0.5">
-          Bandar Tetap (Host)
+    <!-- AREA ATAS: BANDAR (TENGAH) & TUMPUKAN KARTU (SISI KANAN) -->
+    <div class="relative z-10 flex justify-between items-start w-full">
+      <div class="w-16 sm:w-24"></div>
+
+      <div class="flex flex-col items-center flex-1">
+        <div id="bankerCardContainer" class="bg-slate-900/90 border border-amber-500/50 rounded-2xl p-2.5 sm:p-4 text-center w-full max-w-[280px] sm:max-w-xs shadow-2xl backdrop-blur">
+          <div class="inline-block bg-amber-500 text-slate-950 text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-0.5">
+            Bandar Tetap (Host)
+          </div>
+          <div class="flex items-center justify-center gap-1.5">
+            <h2 id="bankerName" class="font-extrabold text-amber-400 text-xs sm:text-sm truncate">Bandar Room</h2>
+            <span id="bankerTimer" class="hidden bg-amber-500 text-slate-950 text-xs font-black w-5 h-5 sm:w-6 sm:h-6 rounded-full inline-flex items-center justify-center shadow">20</span>
+          </div>
+          <div id="bankerCardsArea" class="flex justify-center gap-1.5 sm:gap-2 my-2 sm:my-3 min-h-[76px] sm:min-h-[96px] items-center cards-scroll overflow-x-auto"></div>
+          <div id="bankerScoreText" class="text-[11px] sm:text-xs font-bold text-slate-300">Total: -</div>
         </div>
-        <div class="flex items-center justify-center gap-1.5">
-          <h2 id="bankerName" class="font-extrabold text-amber-400 text-xs sm:text-sm truncate">Bandar Room</h2>
-          <span id="bankerTimer" class="hidden bg-amber-500 text-slate-950 text-xs font-black w-5 h-5 sm:w-6 sm:h-6 rounded-full inline-flex items-center justify-center shadow">20</span>
-        </div>
-        <div id="bankerCardsArea" class="flex justify-center gap-1.5 sm:gap-2 my-2 sm:my-3 min-h-[76px] sm:min-h-[96px] items-center cards-scroll overflow-x-auto"></div>
-        <div id="bankerScoreText" class="text-[11px] sm:text-xs font-bold text-slate-300">Total: -</div>
       </div>
+
+      <div class="flex flex-col items-end justify-start pt-1 pr-1 sm:pr-3 w-16 sm:w-24">
+        <div id="deckContainer" class="bg-slate-900/80 border border-amber-500/40 p-2 sm:p-3 rounded-2xl flex flex-col items-center gap-1 shadow-2xl backdrop-blur">
+          <div class="deck-stack cursor-pointer transition transform hover:scale-105" title="Tumpukan Kartu (Deck Shoe)">
+            <div class="deck-card-layer deck-layer-1"></div>
+            <div class="deck-card-layer deck-layer-2"></div>
+            <div class="deck-card-layer deck-layer-3 card-back"></div>
+          </div>
+          <span class="text-[9px] sm:text-[10px] font-extrabold text-amber-400 tracking-wider uppercase mt-1">DECK</span>
+        </div>
+      </div>
+
     </div>
 
     <!-- STATUS LOG BAR (MIDDLE) -->
@@ -237,7 +286,7 @@
     </div>
   </div>
 
-  <!-- MODAL BUAT ROOM (NAMA BANDAR) -->
+  <!-- MODAL BUAT ROOM -->
   <div id="createHostModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
     <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl">
       <h3 class="text-base sm:text-lg font-bold text-amber-400 font-cinzel mb-1">👑 Buat Room Baru</h3>
@@ -250,7 +299,7 @@
     </div>
   </div>
 
-  <!-- MODAL MASUKKAN KODE ROOM -->
+  <!-- MODAL KODE ROOM -->
   <div id="joinCodeModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
     <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl">
       <h3 class="text-base sm:text-lg font-bold text-amber-400 font-cinzel mb-1">🔑 Masukkan Kode Room</h3>
@@ -263,7 +312,7 @@
     </div>
   </div>
 
-  <!-- MODAL DUDUK SINI (NAMA PEMAIN) -->
+  <!-- MODAL DUDUK -->
   <div id="joinSeatModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
     <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl">
       <h3 class="text-base sm:text-lg font-bold text-amber-400 font-cinzel mb-1">🪑 Duduk di Meja</h3>
@@ -296,11 +345,27 @@
     let targetSeatForJoin = null;
     let lastShownEndPhaseModal = false;
 
+    let fullStateCache = null;
+    let isDealingAnimationInProgress = false;
+
     let currentPOV = 'HOST';
 
     let peer = null;
     let hostConnection = null;
     let guestConnections = [];
+
+    // GOOGLE FREE STUN SERVERS CONFIGURATION (FOR BEDA WIFI / KUOTA FIX)
+    const peerConfig = {
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' }
+        ]
+      }
+    };
 
     window.addEventListener('load', () => {
       if (rawRoomCode) {
@@ -385,7 +450,7 @@
 
     function initNetwork() {
       if (isHost) {
-        peer = new Peer(fullPeerId);
+        peer = new Peer(fullPeerId, peerConfig);
 
         peer.on('open', (id) => {
           document.getElementById('statusNotice').innerText = `Ruangan Siap! Kode Room: ${rawRoomCode}. Bagikan link ke teman.`;
@@ -417,7 +482,7 @@
         });
 
       } else {
-        peer = new Peer();
+        peer = new Peer(peerConfig);
 
         peer.on('open', (id) => {
           document.getElementById('statusNotice').innerText = `Menghubungkan ke Bandar (Room: ${rawRoomCode})...`;
@@ -437,6 +502,8 @@
           hostConnection.on('data', (data) => {
             if (data.type === 'SYNC_STATE') {
               applySyncedState(data.state);
+            } else if (data.type === 'TRIGGER_CASINO_DEAL') {
+              playRealCasinoDealSequence(data.dealSteps, data.finalState);
             }
           });
 
@@ -469,13 +536,20 @@
         }
       });
 
-      renderSeats();
-      renderBankerCards();
-      updateControls();
-      checkAndShowResultModal();
+      if (!isDealingAnimationInProgress) {
+        renderSeats();
+        renderBankerCards();
+        updateControls();
+        checkAndShowResultModal();
+      }
     }
 
     function applySyncedState(state) {
+      if (isDealingAnimationInProgress) {
+        fullStateCache = state;
+        return;
+      }
+
       seats = state.seats;
       bankerCards = state.bankerCards;
       if (state.bankerName) {
@@ -490,7 +564,7 @@
       updateControls();
 
       if (gamePhase === 'PLAYERS_TURN' && activeSeatTurn !== -1 && seats[activeSeatTurn]) {
-        lastShownEndPhaseModal = false; // Reset pop-up flag when new round starts
+        lastShownEndPhaseModal = false;
         if (mySeatIndex === activeSeatTurn) {
           document.getElementById('statusNotice').innerText = `⭐ GILIRAN ANDA (${seats[activeSeatTurn].name})! Pilih HIT / STAND / SPLIT.`;
         } else {
@@ -523,7 +597,6 @@
       const isBankerBlackjack = (bankerCards.length === 2 && calculateScore(bankerCards) === 21);
 
       if (isHost) {
-        // BANDAR POV POP-UP
         icon.innerText = isBankerBlackjack ? "👑" : "🏆";
         title.innerText = isBankerBlackjack ? "👑 BANDAR BLACKJACK (21)!" : "HASIL RONDE BANDAR";
         
@@ -546,7 +619,6 @@
           body.innerHTML = headerText + listHTML;
         }
       } else {
-        // PLAYER POV POP-UP
         if (mySeatIndex !== null && seats[mySeatIndex]) {
           const mySeat = seats[mySeatIndex];
           if (isBankerBlackjack) {
@@ -603,6 +675,93 @@
 
     function closeResultModal() {
       document.getElementById('gameResultModal').classList.add('hidden');
+    }
+
+    // ANIMASI TERBANG KARTU TUNGGAL
+    function animateSingleCardFly(targetElemId, callback) {
+      const deck = document.getElementById('deckContainer');
+      const targetElem = document.getElementById(targetElemId);
+      if (!deck || !targetElem) {
+        if (callback) callback();
+        return;
+      }
+
+      const deckRect = deck.getBoundingClientRect();
+      const targetRect = targetElem.getBoundingClientRect();
+
+      const flyingCard = document.createElement('div');
+      flyingCard.className = 'card card-back flying-card';
+      flyingCard.style.left = `${deckRect.left}px`;
+      flyingCard.style.top = `${deckRect.top}px`;
+      flyingCard.style.width = `${deckRect.width > 50 ? 55 : 44}px`;
+      flyingCard.style.height = `${deckRect.height > 75 ? 80 : 64}px`;
+
+      document.body.appendChild(flyingCard);
+      flyingCard.getBoundingClientRect();
+
+      flyingCard.style.left = `${targetRect.left + (targetRect.width / 4)}px`;
+      flyingCard.style.top = `${targetRect.top + (targetRect.height / 4)}px`;
+      flyingCard.style.transform = 'scale(0.9) rotate(10deg)';
+      flyingCard.style.opacity = '0.9';
+
+      setTimeout(() => {
+        flyingCard.style.opacity = '0';
+        setTimeout(() => {
+          flyingCard.remove();
+          if (callback) callback();
+        }, 100);
+      }, 260);
+    }
+
+    // PLAY SEQUENTIAL DEAL (FIXED ANIMATION FLOW FOR START DEAL & HIT)
+    function playRealCasinoDealSequence(dealSteps, finalState) {
+      isDealingAnimationInProgress = true;
+
+      const isStartDeal = dealSteps.length > 2;
+
+      // HANYA RESET MEJA SAAT AWAL APLIKASI DEAL RONDE BARU
+      if (isStartDeal) {
+        bankerCards = [];
+        seats.forEach(s => { if (s) { s.cards = []; s.splitHand = null; } });
+        renderSeats();
+        renderBankerCards();
+      }
+
+      let stepIdx = 0;
+
+      function nextStep() {
+        if (stepIdx >= dealSteps.length) {
+          isDealingAnimationInProgress = false;
+          if (finalState) applySyncedState(finalState);
+          else if (fullStateCache) applySyncedState(fullStateCache);
+          return;
+        }
+
+        const step = dealSteps[stepIdx];
+        stepIdx++;
+
+        const targetId = step.type === 'BANKER' ? 'bankerCardContainer' : `seatBox_${step.seatIdx}`;
+
+        animateSingleCardFly(targetId, () => {
+          // TAMBAHKAN KARTU KE ARRAY SAAT ANIMASI SAMPAI DI MEJA (PROGRESSIVE RENDERING)
+          if (step.type === 'BANKER') {
+            if (isStartDeal) {
+              bankerCards.push(step.card);
+            }
+            renderBankerCards();
+          } else if (step.type === 'PLAYER') {
+            if (seats[step.seatIdx]) {
+              if (isStartDeal) {
+                seats[step.seatIdx].cards.push(step.card);
+              }
+              renderSeats();
+            }
+          }
+          setTimeout(nextStep, 80);
+        });
+      }
+
+      nextStep();
     }
 
     function handleGuestAction(actionObj, conn) {
@@ -688,21 +847,42 @@
 
     function startDeal() {
       if (!isHost) return;
-      const activePlayers = seats.filter(s => s !== null);
+      const activePlayers = seats.map((s, idx) => ({ seat: s, idx })).filter(item => item.seat !== null);
       if (activePlayers.length === 0) {
         alert('Tidak ada pemain di meja! Harap tekan "DUDUK SINI" pada minimal 1 kursi.');
         return;
       }
 
-      // RESET MODAL FLAG UNTUK HOST AGAR POP-UP MUNCUL DI SETIAP GAME!
       lastShownEndPhaseModal = false;
-
       gamePhase = 'PLAYERS_TURN';
-      bankerCards = [getRandomCard(), getRandomCard()];
 
-      seats.forEach(s => {
+      const newBankerCards = [getRandomCard(), getRandomCard()];
+      const playerDealtCards = {};
+
+      seats.forEach((s, idx) => {
         if (s) {
-          s.cards = [getRandomCard(), getRandomCard()];
+          playerDealtCards[idx] = [getRandomCard(), getRandomCard()];
+        }
+      });
+
+      let dealSteps = [];
+
+      // Putaran 1
+      activePlayers.forEach(p => {
+        dealSteps.push({ type: 'PLAYER', seatIdx: p.idx, card: playerDealtCards[p.idx][0] });
+      });
+      dealSteps.push({ type: 'BANKER', card: newBankerCards[0] });
+
+      // Putaran 2
+      activePlayers.forEach(p => {
+        dealSteps.push({ type: 'PLAYER', seatIdx: p.idx, card: playerDealtCards[p.idx][1] });
+      });
+      dealSteps.push({ type: 'BANKER', card: newBankerCards[1] });
+
+      bankerCards = newBankerCards;
+      seats.forEach((s, idx) => {
+        if (s) {
+          s.cards = playerDealtCards[idx];
           s.splitHand = null;
           s.isSplit = false;
           s.activeSplitIndex = 0;
@@ -710,15 +890,35 @@
         }
       });
 
-      // FITUR BARU: JIKA BANDAR MENDAPATKAN 21 (BLACKJACK) DI 2 KARTU AWAL -> INSTANT AUTOMATIC WIN!
+      activeSeatTurn = seats.findIndex(s => s !== null);
+
+      const finalState = {
+        seats: seats,
+        bankerCards: bankerCards,
+        bankerName: customHostName,
+        gamePhase: gamePhase,
+        activeSeatTurn: activeSeatTurn,
+        turnTimer: 20
+      };
+
+      guestConnections.forEach(conn => {
+        if (conn.open) {
+          conn.send({
+            type: 'TRIGGER_CASINO_DEAL',
+            dealSteps: dealSteps,
+            finalState: finalState
+          });
+        }
+      });
+
+      playRealCasinoDealSequence(dealSteps, finalState);
+
       if (calculateScore(bankerCards) === 21) {
         finishRound();
         return;
       }
 
-      activeSeatTurn = seats.findIndex(s => s !== null);
       startTimer();
-      broadcastState();
     }
 
     function startTimer() {
@@ -748,12 +948,32 @@
           ];
           player.activeSplitIndex = 0;
           player.status = 'Split Hand 1';
+
+          let steps = [
+            { type: 'PLAYER', seatIdx: activeSeatTurn, card: player.splitHand[0][1] },
+            { type: 'PLAYER', seatIdx: activeSeatTurn, card: player.splitHand[1][1] }
+          ];
+
+          const finalState = {
+            seats: seats,
+            bankerCards: bankerCards,
+            bankerName: customHostName,
+            gamePhase: gamePhase,
+            activeSeatTurn: activeSeatTurn,
+            turnTimer: turnTimer
+          };
+
+          guestConnections.forEach(conn => { if (conn.open) conn.send({ type: 'TRIGGER_CASINO_DEAL', dealSteps: steps, finalState: finalState }); });
+          playRealCasinoDealSequence(steps, finalState);
+
           startTimer();
         }
       } else if (action === 'HIT') {
+        let newCard = getRandomCard();
+
         if (player.isSplit) {
           let currentHand = player.splitHand[player.activeSplitIndex];
-          currentHand.push(getRandomCard());
+          currentHand.push(newCard);
           let score = calculateScore(currentHand);
           if (score >= 21) {
             if (player.activeSplitIndex === 0) {
@@ -768,7 +988,7 @@
             startTimer();
           }
         } else {
-          player.cards.push(getRandomCard());
+          player.cards.push(newCard);
           let score = calculateScore(player.cards);
           if (score > 21) {
             player.status = 'BUST (>21)';
@@ -780,6 +1000,21 @@
             startTimer();
           }
         }
+
+        let step = [{ type: 'PLAYER', seatIdx: activeSeatTurn, card: newCard }];
+
+        const finalState = {
+          seats: seats,
+          bankerCards: bankerCards,
+          bankerName: customHostName,
+          gamePhase: gamePhase,
+          activeSeatTurn: activeSeatTurn,
+          turnTimer: turnTimer
+        };
+
+        guestConnections.forEach(conn => { if (conn.open) conn.send({ type: 'TRIGGER_CASINO_DEAL', dealSteps: step, finalState: finalState }); });
+        playRealCasinoDealSequence(step, finalState);
+
       } else if (action === 'STAND') {
         if (player.isSplit) {
           if (player.activeSplitIndex === 0) {
@@ -794,9 +1029,8 @@
           player.status = `Total: ${calculateScore(player.cards)}`;
           nextPlayerTurn();
         }
+        broadcastState();
       }
-
-      broadcastState();
     }
 
     function nextPlayerTurn() {
@@ -832,17 +1066,34 @@
     function handleBankerAction(action) {
       if (!isHost) return;
       if (action === 'HIT') {
-        bankerCards.push(getRandomCard());
+        let newCard = getRandomCard();
+        bankerCards.push(newCard);
         let bScore = calculateScore(bankerCards);
+
+        let step = [{ type: 'BANKER', card: newCard }];
+
         if (bScore >= 21) {
           finishRound();
         } else {
           startTimer();
         }
+
+        const finalState = {
+          seats: seats,
+          bankerCards: bankerCards,
+          bankerName: customHostName,
+          gamePhase: gamePhase,
+          activeSeatTurn: activeSeatTurn,
+          turnTimer: turnTimer
+        };
+
+        guestConnections.forEach(conn => { if (conn.open) conn.send({ type: 'TRIGGER_CASINO_DEAL', dealSteps: step, finalState: finalState }); });
+        playRealCasinoDealSequence(step, finalState);
+
       } else if (action === 'STAND') {
         finishRound();
+        broadcastState();
       }
-      broadcastState();
     }
 
     function finishRound() {
@@ -913,6 +1164,7 @@
 
       seats.forEach((seat, idx) => {
         const div = document.createElement('div');
+        div.id = `seatBox_${idx}`;
         div.className = 'bg-slate-900/90 border border-slate-800 rounded-2xl p-2 sm:p-3 flex flex-col justify-between items-center text-center relative min-h-[145px] sm:min-h-[170px] shadow-lg';
 
         if (!seat) {
@@ -1026,9 +1278,9 @@
       const isBankerTurnPhase = (gamePhase === 'BANKER_TURN');
 
       document.getElementById('dealBtn').style.display = isHost ? 'inline-block' : 'none';
-      document.getElementById('dealBtn').disabled = (isPlayerTurnPhase || isBankerTurnPhase);
+      document.getElementById('dealBtn').disabled = (isPlayerTurnPhase || isBankerTurnPhase || isDealingAnimationInProgress);
 
-      const isMyTurnToPlay = (mySeatIndex !== null && activeSeatTurn === mySeatIndex && isPlayerTurnPhase);
+      const isMyTurnToPlay = (mySeatIndex !== null && activeSeatTurn === mySeatIndex && isPlayerTurnPhase && !isDealingAnimationInProgress);
 
       document.getElementById('hitBtn').disabled = !isMyTurnToPlay;
       document.getElementById('standBtn').disabled = !isMyTurnToPlay;
@@ -1040,8 +1292,8 @@
       if (isHost && isBankerTurnPhase) {
         document.getElementById('bankerHitBtn').classList.remove('hidden');
         document.getElementById('bankerStandBtn').classList.remove('hidden');
-        document.getElementById('bankerHitBtn').disabled = false;
-        document.getElementById('bankerStandBtn').disabled = false;
+        document.getElementById('bankerHitBtn').disabled = isDealingAnimationInProgress;
+        document.getElementById('bankerStandBtn').disabled = isDealingAnimationInProgress;
       } else {
         document.getElementById('bankerHitBtn').classList.add('hidden');
         document.getElementById('bankerStandBtn').classList.add('hidden');
