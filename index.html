@@ -2,78 +2,138 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Blackjack Multiplayer (PeerJS Realtime Mabar)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Blackjack Online Realtime (Mobile Friendly)</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- PeerJS library for WebRTC Realtime P2P Mabar -->
+  <!-- PeerJS for WebRTC Realtime -->
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600;800&display=swap');
+    
+    * {
+      touch-action: manipulation;
+    }
     
     body {
       font-family: 'Inter', sans-serif;
       background-color: #0b0f17;
       color: #f8fafc;
       user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
+    
     .font-cinzel { font-family: 'Cinzel', serif; }
 
-    /* Visual Kartu Kasino */
+    /* Card Responsive Styling */
     .card {
-      width: 68px;
-      height: 98px;
-      border-radius: 8px;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      width: 48px;
+      height: 72px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      flex-shrink: 0;
     }
+    @media (min-width: 640px) {
+      .card {
+        width: 64px;
+        height: 92px;
+        border-radius: 8px;
+      }
+    }
+    
     .card-face {
       background: #ffffff;
       color: #0f172a;
       border: 1px solid #cbd5e1;
     }
+    
     .card-back {
       background: linear-gradient(135deg, #991b1b 0%, #450a0a 100%);
       border: 2px solid #f59e0b;
       position: relative;
     }
+    
     .card-back::after {
       content: '♠♥♦♣';
       position: absolute;
-      inset: 4px;
+      inset: 2px;
       border: 1px dashed rgba(245, 158, 11, 0.4);
       border-radius: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
       color: rgba(245, 158, 11, 0.3);
-      font-size: 10px;
-      letter-spacing: 2px;
+      font-size: 8px;
+      letter-spacing: 1px;
+    }
+    @media (min-width: 640px) {
+      .card-back::after {
+        inset: 4px;
+        font-size: 10px;
+        letter-spacing: 2px;
+      }
+    }
+
+    /* Custom scrollbar for card container */
+    .cards-scroll::-webkit-scrollbar {
+      height: 4px;
+    }
+    .cards-scroll::-webkit-scrollbar-thumb {
+      background: rgba(245, 158, 11, 0.3);
+      border-radius: 4px;
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between p-3 md:p-6">
+<body class="min-h-screen flex flex-col justify-between p-2 sm:p-4 md:p-6 pb-24 md:pb-6 relative overflow-x-hidden">
+
+  <!-- ==================== LANDING SCREEN / MENU UTAMA ==================== -->
+  <div id="landingScreen" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-slate-900 border border-amber-500/30 rounded-3xl p-6 md:p-8 text-center shadow-2xl relative overflow-hidden">
+      <div class="absolute -top-12 -right-12 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl"></div>
+      <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl"></div>
+
+      <div class="text-4xl mb-2">♠️</div>
+      <h1 class="text-2xl md:text-3xl font-black text-amber-400 font-cinzel tracking-wider mb-1">BLACKJACK ONLINE</h1>
+      <p class="text-xs text-slate-400 mb-6">Realtime WebRTC • Mobile Friendly • Fixed Bandar</p>
+
+      <div class="space-y-3">
+        <!-- Opsi 1: Buat Room (Bandar) -->
+        <button onclick="openCreateHostModal()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-4 px-4 rounded-2xl text-xs md:text-sm uppercase shadow-lg transition active:scale-95 flex items-center justify-center gap-2">
+          <span>👑</span> BUAT ROOM BARU (JADI BANDAR)
+        </button>
+
+        <!-- Opsi 2: Masukkan Kode Room -->
+        <button onclick="openJoinCodeModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 font-bold py-4 px-4 rounded-2xl text-xs md:text-sm uppercase shadow transition active:scale-95 flex items-center justify-center gap-2">
+          <span>🔑</span> MASUKKAN KODE ROOM
+        </button>
+      </div>
+
+      <p class="text-[11px] text-slate-500 mt-6">Versi Mobile Responsive • 1 Perangkat Max 1 Kursi</p>
+    </div>
+  </div>
 
   <!-- TOP BAR / HEADER -->
-  <header class="max-w-6xl w-full mx-auto bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-wrap justify-between items-center gap-4 shadow-xl">
-    <div>
+  <header class="max-w-6xl w-full mx-auto bg-slate-900/90 border border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row justify-between items-center gap-3 shadow-xl">
+    <div class="w-full md:w-auto flex justify-between items-center">
       <div class="flex items-center gap-2">
-        <span class="text-2xl">♠️</span>
-        <h1 class="text-xl md:text-2xl font-black text-amber-400 font-cinzel tracking-wider">BLACKJACK ONLINE</h1>
-        <span id="roleBadge" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Bandar (Host)</span>
-        <span id="connStatusBadge" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase flex items-center gap-1">
-          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> PeerJS Active
-        </span>
+        <span class="text-xl sm:text-2xl">♠️</span>
+        <h1 class="text-lg sm:text-2xl font-black text-amber-400 font-cinzel tracking-wider">BLACKJACK</h1>
+        <span id="roleBadge" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Bandar</span>
+        <span id="seatBadge" class="hidden bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Kursi -</span>
       </div>
-      <p class="text-xs text-slate-400 mt-0.5">Realtime WebRTC • Fixed Banker • Catatan Skor (+2 / -2)</p>
+      <button onclick="toggleNotesPanel()" class="md:hidden bg-slate-800 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-xl text-xs font-bold">
+        📋 Skor
+      </button>
     </div>
 
-    <div class="flex items-center flex-wrap gap-2.5">
+    <!-- Right Controls Grid for Mobile -->
+    <div class="w-full md:w-auto flex flex-wrap items-center justify-between md:justify-end gap-2 text-xs">
       <!-- Select POV -->
-      <div class="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
-        <span class="text-slate-400 font-semibold mr-2">👁️ POV:</span>
-        <select id="povSelect" onchange="changePOV(this.value)" class="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer">
-          <option id="hostPovOption" value="HOST" class="bg-slate-900 text-amber-400">👑 Bandar (Host POV)</option>
+      <div class="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5">
+        <span class="text-slate-400 font-semibold mr-1.5 text-[11px]">👁️ POV:</span>
+        <select id="povSelect" onchange="changePOV(this.value)" class="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer text-xs">
+          <option id="hostPovOption" value="HOST" class="bg-slate-900 text-amber-400">👑 Bandar</option>
           <option value="0" class="bg-slate-900 text-slate-200">🪑 Kursi 1</option>
           <option value="1" class="bg-slate-900 text-slate-200">🪑 Kursi 2</option>
           <option value="2" class="bg-slate-900 text-slate-200">🪑 Kursi 3</option>
@@ -83,205 +143,267 @@
         </select>
       </div>
 
-      <!-- Toggle Catatan Poin -->
-      <button onclick="toggleNotesPanel()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow">
+      <!-- Toggle Catatan Poin (Desktop) -->
+      <button onclick="toggleNotesPanel()" class="hidden md:flex bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 px-3 py-1.5 rounded-xl font-bold transition items-center gap-1.5">
         📋 Catatan Poin
       </button>
 
       <!-- Kode Room Badge -->
-      <div class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1">
+      <div class="bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 text-[11px] sm:text-xs">
         KODE: <span id="roomCodeText" class="font-mono text-amber-300 font-extrabold">-</span>
       </div>
 
-      <!-- Tombol Masuk Kode Room -->
-      <button onclick="openJoinCodeModal()" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 font-bold text-xs px-3 py-1.5 rounded-xl shadow transition">
-        🔑 Masukkan Kode
-      </button>
-
       <!-- Salin Link -->
-      <button onclick="copyRoomLink()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs px-3.5 py-1.5 rounded-xl shadow transition">
-        Salin Link Room
+      <button onclick="copyRoomLink()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl shadow transition text-xs active:scale-95">
+        Salin Link
       </button>
     </div>
   </header>
 
   <!-- PANEL REKAP CATATAN POIN -->
-  <div id="notesModal" class="hidden max-w-6xl w-full mx-auto my-3 bg-slate-900 border border-amber-500/40 rounded-2xl p-4 shadow-2xl">
-    <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
-      <h3 class="text-amber-400 font-bold text-sm tracking-wide flex items-center gap-2">
-        <span>📋</span> CATATAN POIN PEMAIN (Menang: +2 | Kalah: -2)
+  <div id="notesModal" class="hidden max-w-6xl w-full mx-auto my-2 bg-slate-900 border border-amber-500/40 rounded-2xl p-3 sm:p-4 shadow-2xl z-20">
+    <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-800">
+      <h3 class="text-amber-400 font-bold text-xs sm:text-sm tracking-wide flex items-center gap-1.5">
+        <span>📋</span> REKAP POIN (+2 / -2)
       </h3>
       <div class="flex items-center gap-3">
-        <button id="resetScoreBtn" onclick="resetAllScores()" class="text-xs text-rose-400 hover:underline font-semibold">Reset Poin</button>
-        <button onclick="toggleNotesPanel()" class="text-slate-400 hover:text-white font-bold text-sm">✕</button>
+        <button id="resetScoreBtn" onclick="resetAllScores()" class="text-xs text-rose-400 hover:underline font-semibold">Reset</button>
+        <button onclick="toggleNotesPanel()" class="text-slate-400 hover:text-white font-bold text-sm px-1">✕</button>
       </div>
     </div>
-    <div id="scoresContainer" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3"></div>
+    <div id="scoresContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs"></div>
   </div>
 
   <!-- MAIN CASINO TABLE -->
-  <main class="max-w-6xl w-full mx-auto my-4 flex-1 bg-emerald-950 border-8 border-amber-950/80 rounded-3xl p-4 md:p-6 relative flex flex-col justify-between shadow-2xl min-h-[520px]">
-    
-    <!-- BRANDING LOGO MEJA -->
+  <main class="max-w-6xl w-full mx-auto my-2 sm:my-4 flex-1 bg-emerald-950 border-4 sm:border-8 border-amber-950/80 rounded-2xl sm:rounded-3xl p-3 sm:p-5 relative flex flex-col justify-between shadow-2xl min-h-[460px] sm:min-h-[520px]">
     <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
       <div class="text-center">
-        <div class="text-7xl font-cinzel text-amber-300 font-black tracking-widest">BLACKJACK</div>
-        <div class="text-sm font-bold text-amber-400 tracking-widest uppercase mt-2">WebRTC Realtime Mabar • Peer2Peer</div>
+        <div class="text-4xl sm:text-7xl font-cinzel text-amber-300 font-black tracking-widest">BLACKJACK</div>
+        <div class="text-[10px] sm:text-sm font-bold text-amber-400 tracking-widest uppercase mt-1">WebRTC Realtime • Mobile Friendly</div>
       </div>
     </div>
 
     <!-- AREA BANDAR (TOP) -->
     <div class="relative z-10 flex flex-col items-center">
-      <div class="bg-slate-900/90 border border-amber-500/50 rounded-2xl p-4 text-center min-w-[240px] shadow-2xl backdrop-blur">
-        <div class="inline-block bg-amber-500 text-slate-950 text-[10px] font-black px-3 py-0.5 rounded-full uppercase tracking-wider mb-1">
+      <div class="bg-slate-900/90 border border-amber-500/50 rounded-2xl p-2.5 sm:p-4 text-center w-full max-w-[280px] sm:max-w-xs shadow-2xl backdrop-blur">
+        <div class="inline-block bg-amber-500 text-slate-950 text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-0.5">
           Bandar Tetap (Host)
         </div>
-        <div class="flex items-center justify-center gap-2">
-          <h2 id="bankerName" class="font-extrabold text-amber-400 text-sm">Bandar Room</h2>
-          <span id="bankerTimer" class="hidden bg-amber-500 text-slate-950 text-xs font-black w-6 h-6 rounded-full inline-flex items-center justify-center shadow">20</span>
+        <div class="flex items-center justify-center gap-1.5">
+          <h2 id="bankerName" class="font-extrabold text-amber-400 text-xs sm:text-sm truncate">Bandar Room</h2>
+          <span id="bankerTimer" class="hidden bg-amber-500 text-slate-950 text-xs font-black w-5 h-5 sm:w-6 sm:h-6 rounded-full inline-flex items-center justify-center shadow">20</span>
         </div>
-
-        <!-- Kartu Bandar -->
-        <div id="bankerCardsArea" class="flex justify-center gap-2 my-3 min-h-[100px] items-center"></div>
-
-        <div id="bankerScoreText" class="text-xs font-bold text-slate-300">Total: -</div>
+        <div id="bankerCardsArea" class="flex justify-center gap-1.5 sm:gap-2 my-2 sm:my-3 min-h-[76px] sm:min-h-[96px] items-center cards-scroll overflow-x-auto"></div>
+        <div id="bankerScoreText" class="text-[11px] sm:text-xs font-bold text-slate-300">Total: -</div>
       </div>
     </div>
 
     <!-- STATUS LOG BAR (MIDDLE) -->
-    <div class="relative z-10 text-center my-3">
-      <div id="statusNotice" class="inline-block bg-slate-900/90 border border-slate-700/80 px-5 py-2 rounded-full text-xs font-bold text-amber-300 shadow-xl backdrop-blur">
-        Menghubungkan ke ruangan...
+    <div class="relative z-10 text-center my-2">
+      <div id="statusNotice" class="inline-block bg-slate-900/95 border border-slate-700/80 px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold text-amber-300 shadow-xl backdrop-blur max-w-[95%] truncate">
+        Pilih opsi di menu utama untuk memulai.
       </div>
     </div>
 
-    <!-- AREA KURSI PEMAIN (BOTTOM - 6 SEATS) -->
-    <div id="seatsGrid" class="relative z-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3"></div>
-
+    <!-- AREA KURSI PEMAIN (BOTTOM - 6 SEATS GRID) -->
+    <div id="seatsGrid" class="relative z-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3"></div>
   </main>
 
-  <!-- CONTROLS FOOTER -->
-  <footer class="max-w-6xl w-full mx-auto bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-wrap justify-between items-center gap-3 shadow-xl">
-    <div class="text-xs text-slate-400 font-semibold flex items-center gap-2">
-      <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-      Status Game: <span id="gamePhaseText" class="text-amber-400 font-bold">Lobby (Menunggu Pemain)</span>
+  <!-- CONTROLS FOOTER (FIXED STICKY BOTTOM FOR MOBILE) -->
+  <footer class="fixed md:relative bottom-0 left-0 right-0 z-40 bg-slate-900/95 border-t md:border border-slate-800 md:rounded-2xl p-2.5 sm:p-4 max-w-6xl w-full mx-auto flex flex-col sm:flex-row justify-between items-center gap-2 shadow-2xl backdrop-blur">
+    <div class="text-[11px] sm:text-xs text-slate-400 font-semibold flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-start">
+      <span class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+        Status: <span id="gamePhaseText" class="text-amber-400 font-bold">Lobby</span>
+      </span>
+      <span id="mobileSeatStatus" class="sm:hidden text-amber-300 font-bold text-[10px] bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700"></span>
     </div>
 
-    <!-- Action Buttons -->
-    <div class="flex flex-wrap gap-2">
-      <button id="dealBtn" onclick="sendOrRunAction('DEAL')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs uppercase shadow-lg transition active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed">
+    <!-- Touch-Optimized Action Buttons -->
+    <div class="flex items-center justify-center gap-2 w-full sm:w-auto">
+      <button id="dealBtn" onclick="sendOrRunAction('DEAL')" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black px-5 py-3 sm:py-2.5 rounded-xl text-xs uppercase shadow-lg transition disabled:opacity-30 disabled:cursor-not-allowed">
         🎴 Bagikan Kartu (Deal)
       </button>
-      <button id="hitBtn" onclick="sendOrRunAction('HIT')" disabled class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 disabled:cursor-not-allowed transition active:scale-95">
-        Hit
+
+      <button id="hitBtn" onclick="sendOrRunAction('HIT')" disabled class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black px-5 py-3 sm:py-2.5 rounded-xl text-xs uppercase shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition">
+        ➕ HIT
       </button>
-      <button id="standBtn" onclick="sendOrRunAction('STAND')" disabled class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 disabled:cursor-not-allowed transition active:scale-95">
-        Stand
+
+      <button id="standBtn" onclick="sendOrRunAction('STAND')" disabled class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-black px-5 py-2.5 sm:py-2.5 rounded-xl text-xs uppercase shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition">
+        ✋ STAND
       </button>
 
       <!-- Host Manual Actions -->
-      <button id="bankerHitBtn" onclick="sendOrRunAction('BANKER_HIT')" disabled class="hidden bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 transition">
+      <button id="bankerHitBtn" onclick="sendOrRunAction('BANKER_HIT')" disabled class="hidden bg-amber-600 hover:bg-amber-500 text-white font-bold px-3 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 transition">
         Hit Bandar
       </button>
-      <button id="bankerStandBtn" onclick="sendOrRunAction('BANKER_STAND')" disabled class="hidden bg-slate-700 hover:bg-slate-600 text-amber-300 font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 transition">
+      <button id="bankerStandBtn" onclick="sendOrRunAction('BANKER_STAND')" disabled class="hidden bg-slate-700 hover:bg-slate-600 text-amber-300 font-bold px-3 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 transition">
         Stand Bandar
       </button>
     </div>
   </footer>
 
-  <!-- MODAL DUDUK SINI -->
-  <div id="joinSeatModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
-    <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-      <h3 class="text-lg font-bold text-amber-400 font-cinzel mb-1">Duduk di Meja</h3>
-      <p class="text-xs text-slate-400 mb-4">Masukkan nama Anda untuk menempati <span id="modalSeatTitle" class="text-amber-300 font-bold">Kursi 1</span>:</p>
-      <input type="text" id="playerNameInput" placeholder="Contoh: Budi, Agus..." class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-xl px-3.5 py-2.5 text-sm mb-4 focus:outline-none focus:border-amber-400">
+  <!-- MODAL BUAT ROOM (NAMA BANDAR) -->
+  <div id="createHostModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+    <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl">
+      <h3 class="text-base sm:text-lg font-bold text-amber-400 font-cinzel mb-1">👑 Buat Room Baru</h3>
+      <p class="text-xs text-slate-400 mb-3 sm:mb-4">Masukkan Nama Anda sebagai Bandar (Host):</p>
+      <input type="text" id="hostNameInput" placeholder="Contoh: Bandar Bos..." class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-xl px-3.5 py-3 text-sm mb-4 focus:outline-none focus:border-amber-400">
       <div class="flex justify-end gap-2">
-        <button onclick="closeJoinModal()" class="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white">Batal</button>
-        <button onclick="confirmJoinSeat()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs shadow">Konfirmasi</button>
+        <button onclick="closeCreateHostModal()" class="px-3.5 py-2 text-xs font-bold text-slate-400 hover:text-white">Batal</button>
+        <button onclick="confirmCreateHost()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow active:scale-95">Mulai Jadi Bandar</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL INPUT KODE ROOM -->
+  <!-- MODAL MASUKKAN KODE ROOM -->
   <div id="joinCodeModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
-    <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-      <h3 class="text-lg font-bold text-amber-400 font-cinzel mb-1">🔑 Masukkan Kode Room</h3>
-      <p class="text-xs text-slate-400 mb-4">Minta Kode Room dari temanmu lalu masukkan di bawah ini:</p>
-      <input type="text" id="inputRoomCode" placeholder="Contoh: BJ89X2" class="w-full bg-slate-800 border border-slate-700 text-amber-300 uppercase font-mono font-bold rounded-xl px-3.5 py-2.5 text-center text-base mb-4 focus:outline-none focus:border-amber-400">
+    <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl">
+      <h3 class="text-base sm:text-lg font-bold text-amber-400 font-cinzel mb-1">🔑 Masukkan Kode Room</h3>
+      <p class="text-xs text-slate-400 mb-3 sm:mb-4">Minta Kode Room dari Bandar lalu masukkan di bawah:</p>
+      <input type="text" id="inputRoomCode" placeholder="Contoh: BJ89X2" class="w-full bg-slate-800 border border-slate-700 text-amber-300 uppercase font-mono font-bold rounded-xl px-3.5 py-3 text-center text-base mb-4 focus:outline-none focus:border-amber-400">
       <div class="flex justify-end gap-2">
-        <button onclick="closeJoinCodeModal()" class="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white">Batal</button>
-        <button onclick="submitJoinRoomCode()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs shadow">Masuk Room</button>
+        <button onclick="closeJoinCodeModal()" class="px-3.5 py-2 text-xs font-bold text-slate-400 hover:text-white">Batal</button>
+        <button onclick="submitJoinRoomCode()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow active:scale-95">Masuk Meja</button>
       </div>
     </div>
   </div>
 
-  <!-- SCRIPT PEERJS REALTIME MULTIPLAYER -->
+  <!-- MODAL DUDUK SINI (NAMA PEMAIN) -->
+  <div id="joinSeatModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+    <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl">
+      <h3 class="text-base sm:text-lg font-bold text-amber-400 font-cinzel mb-1">🪑 Duduk di Meja</h3>
+      <p class="text-xs text-slate-400 mb-3 sm:mb-4">Masukkan nama Anda untuk menempati <span id="modalSeatTitle" class="text-amber-300 font-bold">Kursi 1</span>:</p>
+      <input type="text" id="playerNameInput" placeholder="Contoh: Budi, Agus..." class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-xl px-3.5 py-3 text-sm mb-4 focus:outline-none focus:border-amber-400">
+      <div class="flex justify-end gap-2">
+        <button onclick="closeJoinModal()" class="px-3.5 py-2 text-xs font-bold text-slate-400 hover:text-white">Batal</button>
+        <button onclick="confirmJoinSeat()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow active:scale-95">Konfirmasi Duduk</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT PEERJS REALTIME LOGIC -->
   <script>
-    // READ URL PARAMETER FOR ROOM CODE
     const urlParams = new URLSearchParams(window.location.search);
     let rawRoomCode = urlParams.get('room');
     let isHost = false;
-
-    if (!rawRoomCode) {
-      rawRoomCode = 'BJ' + Math.random().toString(36).substring(2, 7).toUpperCase();
-      isHost = true;
-    } else {
-      rawRoomCode = rawRoomCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    }
+    let customHostName = "Bandar Room";
 
     const PEER_PREFIX = "BJONLINE_ROOM_";
-    const fullPeerId = PEER_PREFIX + rawRoomCode;
+    let fullPeerId = "";
 
-    document.getElementById('roomCodeText').innerText = rawRoomCode;
-
-    // ROLE & POV SETUP
-    if (!isHost) {
-      document.getElementById('roleBadge').innerText = 'Pemain (Guest)';
-      document.getElementById('roleBadge').className = 'bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase';
-      document.getElementById('hostPovOption').disabled = true;
-      document.getElementById('hostPovOption').innerText = '🔒 Bandar (Host POV - Terkunci)';
-      document.getElementById('povSelect').value = '0';
-      document.getElementById('resetScoreBtn').style.display = 'none';
-    }
-
-    let currentPOV = isHost ? 'HOST' : '0';
     let mySeatIndex = null;
-
-    // CANONICAL STATE (MANAGED BY HOST)
-    let seats = Array(6).fill(null);
     let bankerCards = [];
+    let seats = Array(6).fill(null);
     let gamePhase = 'LOBBY'; 
     let activeSeatTurn = -1;
     let turnTimer = 20;
     let timerInterval = null;
     let targetSeatForJoin = null;
 
-    // PEERJS NETWORK STATE
+    let currentPOV = 'HOST';
+
     let peer = null;
-    let hostConnection = null; // For Guest: connection to Host
-    let guestConnections = []; // For Host: list of connected guest connections
+    let hostConnection = null;
+    let guestConnections = [];
+
+    window.addEventListener('load', () => {
+      if (rawRoomCode) {
+        document.getElementById('inputRoomCode').value = rawRoomCode;
+        openJoinCodeModal();
+      }
+    });
+
+    function openCreateHostModal() {
+      document.getElementById('hostNameInput').value = '';
+      document.getElementById('createHostModal').classList.remove('hidden');
+    }
+    function closeCreateHostModal() {
+      document.getElementById('createHostModal').classList.add('hidden');
+    }
+
+    function confirmCreateHost() {
+      const name = document.getElementById('hostNameInput').value.trim();
+      customHostName = name || "Bandar Room";
+      document.getElementById('bankerName').innerText = customHostName;
+
+      rawRoomCode = 'BJ' + Math.random().toString(36).substring(2, 7).toUpperCase();
+      isHost = true;
+      fullPeerId = PEER_PREFIX + rawRoomCode;
+
+      closeCreateHostModal();
+      hideLandingScreen();
+
+      document.getElementById('roomCodeText').innerText = rawRoomCode;
+      setupRoleUI();
+      initNetwork();
+    }
+
+    function openJoinCodeModal() {
+      document.getElementById('joinCodeModal').classList.remove('hidden');
+    }
+    function closeJoinCodeModal() {
+      document.getElementById('joinCodeModal').classList.add('hidden');
+    }
+
+    function submitJoinRoomCode() {
+      const code = document.getElementById('inputRoomCode').value.trim().toUpperCase();
+      if (!code) {
+        alert('Masukkan Kode Room terlebih dahulu!');
+        return;
+      }
+      rawRoomCode = code;
+      isHost = false;
+      fullPeerId = PEER_PREFIX + rawRoomCode;
+
+      const savedSeat = sessionStorage.getItem('BJ_SEAT_' + rawRoomCode);
+      if (savedSeat !== null) {
+        mySeatIndex = parseInt(savedSeat, 10);
+      }
+
+      closeJoinCodeModal();
+      hideLandingScreen();
+
+      document.getElementById('roomCodeText').innerText = rawRoomCode;
+      setupRoleUI();
+      initNetwork();
+    }
+
+    function hideLandingScreen() {
+      document.getElementById('landingScreen').classList.add('hidden');
+    }
+
+    function setupRoleUI() {
+      if (!isHost) {
+        document.getElementById('roleBadge').innerText = 'Pemain';
+        document.getElementById('roleBadge').className = 'bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase';
+        document.getElementById('hostPovOption').disabled = true;
+        document.getElementById('hostPovOption').innerText = '🔒 Bandar (Host)';
+        document.getElementById('resetScoreBtn').style.display = 'none';
+        currentPOV = (mySeatIndex !== null) ? mySeatIndex.toString() : '0';
+        document.getElementById('povSelect').value = currentPOV;
+      } else {
+        currentPOV = 'HOST';
+        document.getElementById('povSelect').value = 'HOST';
+      }
+    }
 
     function initNetwork() {
       if (isHost) {
-        // HOST CREATES ROOM
         peer = new Peer(fullPeerId);
 
         peer.on('open', (id) => {
-          document.getElementById('statusNotice').innerText = `Ruangan siap! Kode Room: ${rawRoomCode}. Bagikan link ke teman untuk mabar.`;
+          document.getElementById('statusNotice').innerText = `Ruangan Siap! Kode Room: ${rawRoomCode}. Bagikan link ke teman.`;
         });
 
         peer.on('connection', (conn) => {
           guestConnections.push(conn);
-          
           conn.on('open', () => {
-            // Send current state to newly connected guest
             broadcastState();
           });
-
           conn.on('data', (data) => {
             handleGuestAction(data, conn);
           });
-
           conn.on('close', () => {
             guestConnections = guestConnections.filter(c => c !== conn);
           });
@@ -289,24 +411,32 @@
 
         peer.on('error', (err) => {
           if (err.type === 'unavailable-id') {
-            document.getElementById('statusNotice').innerText = `Kode room ${rawRoomCode} sedang dipakai. Membuat room baru...`;
+            alert(`Kode Room ${rawRoomCode} sedang digunakan. Membuat room baru...`);
             rawRoomCode = 'BJ' + Math.random().toString(36).substring(2, 7).toUpperCase();
-            window.location.href = window.location.pathname + '?room=' + rawRoomCode;
+            fullPeerId = PEER_PREFIX + rawRoomCode;
+            document.getElementById('roomCodeText').innerText = rawRoomCode;
+            initNetwork();
           } else {
             console.error('PeerJS Error:', err);
           }
         });
 
       } else {
-        // GUEST JOINS ROOM
         peer = new Peer();
 
         peer.on('open', (id) => {
-          document.getElementById('statusNotice').innerText = `Menghubungkan ke Host (Room: ${rawRoomCode})...`;
+          document.getElementById('statusNotice').innerText = `Menghubungkan ke Bandar (Room: ${rawRoomCode})...`;
           hostConnection = peer.connect(fullPeerId);
 
           hostConnection.on('open', () => {
-            document.getElementById('statusNotice').innerText = `Berhasil terhubung ke Room ${rawRoomCode}! Silakan "DUDUK SINI".`;
+            document.getElementById('statusNotice').innerText = `Terhubung ke Room ${rawRoomCode}! Silakan "DUDUK SINI".`;
+            if (mySeatIndex !== null) {
+              const savedName = sessionStorage.getItem('BJ_NAME_' + rawRoomCode) || `Pemain ${mySeatIndex + 1}`;
+              hostConnection.send({
+                action: 'JOIN_SEAT',
+                payload: { seatIndex: mySeatIndex, name: savedName }
+              });
+            }
           });
 
           hostConnection.on('data', (data) => {
@@ -321,18 +451,18 @@
         });
 
         peer.on('error', (err) => {
-          document.getElementById('statusNotice').innerText = `Gagal terhubung ke Room ${rawRoomCode}. Pastikan Bandar sedang online.`;
+          document.getElementById('statusNotice').innerText = `Gagal terhubung ke Room ${rawRoomCode}. Pastikan Bandar online.`;
         });
       }
     }
 
-    // BROADCAST STATE FROM HOST TO ALL GUESTS
     function broadcastState() {
       if (!isHost) return;
 
       const statePayload = {
         seats: seats,
         bankerCards: bankerCards,
+        bankerName: customHostName,
         gamePhase: gamePhase,
         activeSeatTurn: activeSeatTurn,
         turnTimer: turnTimer
@@ -344,16 +474,17 @@
         }
       });
 
-      // Also render locally on Host
       renderSeats();
       renderBankerCards();
       updateControls();
     }
 
-    // APPLY SYNCED STATE ON GUEST
     function applySyncedState(state) {
       seats = state.seats;
       bankerCards = state.bankerCards;
+      if (state.bankerName) {
+        document.getElementById('bankerName').innerText = state.bankerName;
+      }
       gamePhase = state.gamePhase;
       activeSeatTurn = state.activeSeatTurn;
       turnTimer = state.turnTimer;
@@ -363,20 +494,22 @@
       updateControls();
 
       if (gamePhase === 'PLAYERS_TURN' && activeSeatTurn !== -1 && seats[activeSeatTurn]) {
-        document.getElementById('statusNotice').innerText = `Giliran ${seats[activeSeatTurn].name} bertindak.`;
+        if (mySeatIndex === activeSeatTurn) {
+          document.getElementById('statusNotice').innerText = `⭐ GILIRAN ANDA (${seats[activeSeatTurn].name})! Pilih HIT / STAND.`;
+        } else {
+          document.getElementById('statusNotice').innerText = `Giliran ${seats[activeSeatTurn].name} bertindak...`;
+        }
       } else if (gamePhase === 'BANKER_TURN') {
         document.getElementById('statusNotice').innerText = `Giliran Bandar bertindak.`;
       } else if (gamePhase === 'END') {
-        document.getElementById('statusNotice').innerText = `Ronde Selesai! Poin telah diperbarui di Catatan Poin.`;
+        document.getElementById('statusNotice').innerText = `Ronde Selesai! Poin diperbarui.`;
       } else if (gamePhase === 'LOBBY') {
-        document.getElementById('statusNotice').innerText = `Room ${rawRoomCode} Siap! Silakan tekan DUDUK SINI.`;
+        document.getElementById('statusNotice').innerText = `Room ${rawRoomCode} Siap! Silakan DUDUK SINI.`;
       }
     }
 
-    // HANDLE GUEST ACTIONS RECEIVED BY HOST
     function handleGuestAction(actionObj, conn) {
       if (!isHost) return;
-
       const { action, payload } = actionObj;
 
       if (action === 'JOIN_SEAT') {
@@ -387,27 +520,34 @@
           status: 'Menunggu Game'
         };
         broadcastState();
-      } else if (action === 'HIT') {
-        if (activeSeatTurn === payload.seatIndex) {
-          handlePlayerAction('HIT');
-        }
-      } else if (action === 'STAND') {
-        if (activeSeatTurn === payload.seatIndex) {
-          handlePlayerAction('STAND');
+      } else if (action === 'PLAYER_ACTION') {
+        if (activeSeatTurn === payload.seatIndex && gamePhase === 'PLAYERS_TURN') {
+          handlePlayerAction(payload.type);
         }
       }
     }
 
-    // SEND OR EXECUTE ACTIONS
     function sendOrRunAction(actionType) {
       if (actionType === 'DEAL') {
         if (isHost) startDeal();
       } else if (actionType === 'HIT' || actionType === 'STAND') {
+        if (mySeatIndex === null) {
+          alert('Anda belum duduk di kursi mana pun! Tekan "DUDUK SINI" terlebih dahulu.');
+          return;
+        }
+        if (activeSeatTurn !== mySeatIndex) {
+          alert('Bukan giliran Anda!');
+          return;
+        }
+
         if (isHost) {
           handlePlayerAction(actionType);
         } else {
-          if (mySeatIndex !== null && activeSeatTurn === mySeatIndex && hostConnection && hostConnection.open) {
-            hostConnection.send({ action: actionType, payload: { seatIndex: mySeatIndex } });
+          if (hostConnection && hostConnection.open) {
+            hostConnection.send({
+              action: 'PLAYER_ACTION',
+              payload: { type: actionType, seatIndex: mySeatIndex }
+            });
           }
         }
       } else if (actionType === 'BANKER_HIT' || actionType === 'BANKER_STAND') {
@@ -417,7 +557,6 @@
       }
     }
 
-    // GAME ENGINE FUNCTIONS (RUNS ON HOST)
     function calculateScore(cards) {
       if (!cards || cards.length === 0) return 0;
       let score = 0, aces = 0;
@@ -455,7 +594,6 @@
       });
 
       activeSeatTurn = seats.findIndex(s => s !== null);
-      
       startTimer();
       broadcastState();
     }
@@ -572,21 +710,35 @@
       broadcastState();
     }
 
-    // UI RENDERING
     function renderSeats() {
       const grid = document.getElementById('seatsGrid');
       grid.innerHTML = '';
 
+      const seatBadge = document.getElementById('seatBadge');
+      const mobileSeatStatus = document.getElementById('mobileSeatStatus');
+      
+      if (mySeatIndex !== null) {
+        seatBadge.classList.remove('hidden');
+        seatBadge.innerText = `Kursi ${mySeatIndex + 1}`;
+        mobileSeatStatus.innerText = `Kursi ${mySeatIndex + 1}`;
+      } else {
+        seatBadge.classList.add('hidden');
+        mobileSeatStatus.innerText = 'Penonton';
+      }
+
       seats.forEach((seat, idx) => {
         const div = document.createElement('div');
-        div.className = 'bg-slate-900/90 border border-slate-800 rounded-2xl p-3 flex flex-col justify-between items-center text-center relative min-h-[170px] shadow-lg';
+        div.className = 'bg-slate-900/90 border border-slate-800 rounded-2xl p-2 sm:p-3 flex flex-col justify-between items-center text-center relative min-h-[145px] sm:min-h-[170px] shadow-lg';
 
         if (!seat) {
+          const isMeSeated = (mySeatIndex !== null);
+          const buttonHTML = isMeSeated ? 
+            `<button disabled class="my-auto bg-slate-800 text-slate-500 border border-slate-700 text-[10px] font-bold px-2 py-1.5 rounded-xl cursor-not-allowed">Kosong</button>` :
+            `<button onclick="openJoinModal(${idx})" class="my-auto bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[11px] sm:text-xs font-bold px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl transition active:scale-95">DUDUK SINI</button>`;
+
           div.innerHTML = `
-            <div class="text-[10px] font-bold text-slate-500 tracking-wider">KURSI ${idx + 1}</div>
-            <button onclick="openJoinModal(${idx})" class="my-auto bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold px-3 py-2 rounded-xl transition">
-              DUDUK SINI
-            </button>
+            <div class="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-wider">KURSI ${idx + 1}</div>
+            ${buttonHTML}
             <div class="text-[9px] text-slate-600">Kosong</div>
           `;
         } else {
@@ -596,21 +748,22 @@
           }
 
           let cardsHTML = seat.cards.map(c => `
-            <div class="card card-face flex flex-col justify-between p-1.5 font-bold text-xs select-none">
+            <div class="card card-face flex flex-col justify-between p-1 font-bold text-[11px] sm:text-xs select-none">
               <span class="${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.rank}${c.suit}</span>
-              <span class="text-center text-lg ${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.suit}</span>
+              <span class="text-center text-sm sm:text-lg ${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.suit}</span>
             </div>
           `).join('');
 
-          let timerBadge = isTurn ? `<span class="bg-amber-500 text-slate-950 font-black text-[10px] w-5 h-5 rounded-full inline-flex items-center justify-center">${turnTimer}</span>` : '';
+          let timerBadge = isTurn ? `<span class="bg-amber-500 text-slate-950 font-black text-[10px] w-4 h-4 sm:w-5 sm:h-5 rounded-full inline-flex items-center justify-center">${turnTimer}</span>` : '';
+          let isMeTag = (mySeatIndex === idx) ? ` <span class="text-[8px] bg-emerald-500/20 text-emerald-400 px-1 rounded">(Anda)</span>` : '';
 
           div.innerHTML = `
             <div class="flex items-center justify-between w-full">
-              <span class="text-xs font-bold text-amber-400 truncate max-w-[80px]">${seat.name}</span>
+              <span class="text-[11px] sm:text-xs font-bold text-amber-400 truncate max-w-[75px] sm:max-w-[90px]">${seat.name}${isMeTag}</span>
               ${timerBadge}
             </div>
-            <div class="flex gap-1 justify-center my-2 overflow-x-auto w-full min-h-[100px] items-center">${cardsHTML}</div>
-            <div class="text-[10px] font-bold ${seat.status.includes('MENANG') ? 'text-emerald-400' : seat.status.includes('KALAH') ? 'text-rose-400' : 'text-slate-400'}">
+            <div class="flex gap-1 justify-center my-1.5 sm:my-2 cards-scroll overflow-x-auto w-full min-h-[76px] sm:min-h-[100px] items-center">${cardsHTML}</div>
+            <div class="text-[9px] sm:text-[10px] font-bold ${seat.status.includes('MENANG') ? 'text-emerald-400' : seat.status.includes('KALAH') ? 'text-rose-400' : 'text-slate-400'} truncate w-full">
               ${seat.status}
             </div>
           `;
@@ -632,9 +785,9 @@
           area.innerHTML += `<div class="card card-back"></div>`;
         } else {
           area.innerHTML += `
-            <div class="card card-face flex flex-col justify-between p-1.5 font-bold text-xs select-none">
+            <div class="card card-face flex flex-col justify-between p-1 font-bold text-[11px] sm:text-xs select-none">
               <span class="${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.rank}${c.suit}</span>
-              <span class="text-center text-lg ${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.suit}</span>
+              <span class="text-center text-sm sm:text-lg ${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.suit}</span>
             </div>
           `;
         }
@@ -651,16 +804,14 @@
       const isPlayerTurnPhase = (gamePhase === 'PLAYERS_TURN');
       const isBankerTurnPhase = (gamePhase === 'BANKER_TURN');
 
-      // Deal button only for Host
       document.getElementById('dealBtn').style.display = isHost ? 'inline-block' : 'none';
       document.getElementById('dealBtn').disabled = (isPlayerTurnPhase || isBankerTurnPhase);
 
-      // Hit/Stand buttons enabled if it's my turn or Host
-      const isMyTurn = (mySeatIndex !== null && activeSeatTurn === mySeatIndex) || (isHost && isPlayerTurnPhase);
-      document.getElementById('hitBtn').disabled = (!isPlayerTurnPhase || !isMyTurn);
-      document.getElementById('standBtn').disabled = (!isPlayerTurnPhase || !isMyTurn);
+      const isMyTurnToPlay = (mySeatIndex !== null && activeSeatTurn === mySeatIndex && isPlayerTurnPhase);
 
-      // Host Manual Banker Actions
+      document.getElementById('hitBtn').disabled = !isMyTurnToPlay;
+      document.getElementById('standBtn').disabled = !isMyTurnToPlay;
+
       if (isHost && isBankerTurnPhase) {
         document.getElementById('bankerHitBtn').classList.remove('hidden');
         document.getElementById('bankerStandBtn').classList.remove('hidden');
@@ -672,13 +823,16 @@
       }
 
       document.getElementById('gamePhaseText').innerText = 
-        gamePhase === 'LOBBY' ? 'Lobby (Menunggu Pemain)' :
+        gamePhase === 'LOBBY' ? 'Lobby' :
         gamePhase === 'PLAYERS_TURN' ? 'Giliran Pemain' :
-        gamePhase === 'BANKER_TURN' ? 'Giliran Bandar' : 'Ronde Selesai';
+        gamePhase === 'BANKER_TURN' ? 'Giliran Bandar' : 'Selesai';
     }
 
-    // MODAL HANDLERS
     function openJoinModal(seatIdx) {
+      if (mySeatIndex !== null) {
+        alert('Setiap perangkat hanya diperbolehkan menempati maksimal 1 kursi!');
+        return;
+      }
       targetSeatForJoin = seatIdx;
       document.getElementById('modalSeatTitle').innerText = `Kursi ${seatIdx + 1}`;
       document.getElementById('playerNameInput').value = '';
@@ -694,6 +848,8 @@
       const name = input || `Pemain ${targetSeatForJoin + 1}`;
 
       mySeatIndex = targetSeatForJoin;
+      sessionStorage.setItem('BJ_SEAT_' + rawRoomCode, mySeatIndex);
+      sessionStorage.setItem('BJ_NAME_' + rawRoomCode, name);
 
       if (isHost) {
         seats[targetSeatForJoin] = {
@@ -717,26 +873,6 @@
       closeJoinModal();
     }
 
-    function openJoinCodeModal() {
-      document.getElementById('inputRoomCode').value = '';
-      document.getElementById('joinCodeModal').classList.remove('hidden');
-    }
-
-    function closeJoinCodeModal() {
-      document.getElementById('joinCodeModal').classList.add('hidden');
-    }
-
-    function submitJoinRoomCode() {
-      const code = document.getElementById('inputRoomCode').value.trim().toUpperCase();
-      if (!code) {
-        alert('Masukkan Kode Room terlebih dahulu!');
-        return;
-      }
-      const url = new URL(window.location.href);
-      url.searchParams.set('room', code);
-      window.location.href = url.href;
-    }
-
     function changePOV(val) {
       if (val === 'HOST' && !isHost) return;
       currentPOV = val;
@@ -758,8 +894,8 @@
       }
 
       container.innerHTML = activePlayers.map(s => `
-        <div class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 flex justify-between items-center">
-          <span class="text-xs font-bold text-slate-200 truncate max-w-[90px]">${s.name}</span>
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex justify-between items-center">
+          <span class="text-xs font-bold text-slate-200 truncate max-w-[80px]">${s.name}</span>
           <span class="text-xs font-black ${s.scorePoints > 0 ? 'text-emerald-400' : s.scorePoints < 0 ? 'text-rose-400' : 'text-slate-400'}">
             ${s.scorePoints > 0 ? '+' + s.scorePoints : s.scorePoints}
           </span>
@@ -778,13 +914,8 @@
     function copyRoomLink() {
       const shareUrl = window.location.origin + window.location.pathname + '?room=' + rawRoomCode;
       navigator.clipboard.writeText(shareUrl);
-      alert('Link Room (' + rawRoomCode + ') berhasil disalin! Bagikan link ini ke temanmu agar mereka langsung mabar di room ini.');
+      alert('Link Room (' + rawRoomCode + ') berhasil disalin! Kirim ke temanmu untuk mabar.');
     }
-
-    // INIT NETWORK & GAME
-    initNetwork();
-    renderSeats();
-    updateControls();
   </script>
 </body>
 </html>
