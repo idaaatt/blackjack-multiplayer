@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Blackjack Online Realtime (Mobile Friendly)</title>
+  <title>Blackjack Online Realtime (Split & End Result Pop-up)</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- PeerJS for WebRTC Realtime -->
@@ -11,9 +11,7 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600;800&display=swap');
     
-    * {
-      touch-action: manipulation;
-    }
+    * { touch-action: manipulation; }
     
     body {
       font-family: 'Inter', sans-serif;
@@ -27,8 +25,8 @@
 
     /* Card Responsive Styling */
     .card {
-      width: 48px;
-      height: 72px;
+      width: 46px;
+      height: 68px;
       border-radius: 6px;
       transition: all 0.2s ease;
       box-shadow: 0 2px 6px rgba(0,0,0,0.5);
@@ -36,8 +34,8 @@
     }
     @media (min-width: 640px) {
       .card {
-        width: 64px;
-        height: 92px;
+        width: 60px;
+        height: 88px;
         border-radius: 8px;
       }
     }
@@ -67,22 +65,9 @@
       font-size: 8px;
       letter-spacing: 1px;
     }
-    @media (min-width: 640px) {
-      .card-back::after {
-        inset: 4px;
-        font-size: 10px;
-        letter-spacing: 2px;
-      }
-    }
 
-    /* Custom scrollbar for card container */
-    .cards-scroll::-webkit-scrollbar {
-      height: 4px;
-    }
-    .cards-scroll::-webkit-scrollbar-thumb {
-      background: rgba(245, 158, 11, 0.3);
-      border-radius: 4px;
-    }
+    .cards-scroll::-webkit-scrollbar { height: 4px; }
+    .cards-scroll::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.3); border-radius: 4px; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between p-2 sm:p-4 md:p-6 pb-24 md:pb-6 relative overflow-x-hidden">
@@ -95,21 +80,19 @@
 
       <div class="text-4xl mb-2">♠️</div>
       <h1 class="text-2xl md:text-3xl font-black text-amber-400 font-cinzel tracking-wider mb-1">BLACKJACK ONLINE</h1>
-      <p class="text-xs text-slate-400 mb-6">Realtime WebRTC • Mobile Friendly • Fixed Bandar</p>
+      <p class="text-xs text-slate-400 mb-6">Realtime WebRTC • Fitur Split • Hasil Game Pop-up</p>
 
       <div class="space-y-3">
-        <!-- Opsi 1: Buat Room (Bandar) -->
         <button onclick="openCreateHostModal()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-4 px-4 rounded-2xl text-xs md:text-sm uppercase shadow-lg transition active:scale-95 flex items-center justify-center gap-2">
           <span>👑</span> BUAT ROOM BARU (JADI BANDAR)
         </button>
 
-        <!-- Opsi 2: Masukkan Kode Room -->
         <button onclick="openJoinCodeModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 font-bold py-4 px-4 rounded-2xl text-xs md:text-sm uppercase shadow transition active:scale-95 flex items-center justify-center gap-2">
           <span>🔑</span> MASUKKAN KODE ROOM
         </button>
       </div>
 
-      <p class="text-[11px] text-slate-500 mt-6">Versi Mobile Responsive • 1 Perangkat Max 1 Kursi</p>
+      <p class="text-[11px] text-slate-500 mt-6">Versi Realtime • 1 Perangkat Max 1 Kursi</p>
     </div>
   </div>
 
@@ -127,9 +110,7 @@
       </button>
     </div>
 
-    <!-- Right Controls Grid for Mobile -->
     <div class="w-full md:w-auto flex flex-wrap items-center justify-between md:justify-end gap-2 text-xs">
-      <!-- Select POV -->
       <div class="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5">
         <span class="text-slate-400 font-semibold mr-1.5 text-[11px]">👁️ POV:</span>
         <select id="povSelect" onchange="changePOV(this.value)" class="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer text-xs">
@@ -143,17 +124,14 @@
         </select>
       </div>
 
-      <!-- Toggle Catatan Poin (Desktop) -->
       <button onclick="toggleNotesPanel()" class="hidden md:flex bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 px-3 py-1.5 rounded-xl font-bold transition items-center gap-1.5">
         📋 Catatan Poin
       </button>
 
-      <!-- Kode Room Badge -->
       <div class="bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 text-[11px] sm:text-xs">
         KODE: <span id="roomCodeText" class="font-mono text-amber-300 font-extrabold">-</span>
       </div>
 
-      <!-- Salin Link -->
       <button onclick="copyRoomLink()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl shadow transition text-xs active:scale-95">
         Salin Link
       </button>
@@ -179,7 +157,7 @@
     <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
       <div class="text-center">
         <div class="text-4xl sm:text-7xl font-cinzel text-amber-300 font-black tracking-widest">BLACKJACK</div>
-        <div class="text-[10px] sm:text-sm font-bold text-amber-400 tracking-widest uppercase mt-1">WebRTC Realtime • Mobile Friendly</div>
+        <div class="text-[10px] sm:text-sm font-bold text-amber-400 tracking-widest uppercase mt-1">WebRTC Realtime • Fitur Split</div>
       </div>
     </div>
 
@@ -220,17 +198,22 @@
     </div>
 
     <!-- Touch-Optimized Action Buttons -->
-    <div class="flex items-center justify-center gap-2 w-full sm:w-auto">
-      <button id="dealBtn" onclick="sendOrRunAction('DEAL')" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black px-5 py-3 sm:py-2.5 rounded-xl text-xs uppercase shadow-lg transition disabled:opacity-30 disabled:cursor-not-allowed">
-        🎴 Bagikan Kartu (Deal)
+    <div class="flex items-center justify-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+      <button id="dealBtn" onclick="sendOrRunAction('DEAL')" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black px-4 sm:px-5 py-2.5 rounded-xl text-xs uppercase shadow-lg transition disabled:opacity-30 disabled:cursor-not-allowed">
+        🎴 Bagikan Kartu
       </button>
 
-      <button id="hitBtn" onclick="sendOrRunAction('HIT')" disabled class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black px-5 py-3 sm:py-2.5 rounded-xl text-xs uppercase shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition">
-        ➕ HIT
+      <button id="hitBtn" onclick="sendOrRunAction('HIT')" disabled class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black px-3 sm:px-5 py-2.5 rounded-xl text-xs uppercase shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center justify-center gap-1">
+        <span>➕</span> HIT
       </button>
 
-      <button id="standBtn" onclick="sendOrRunAction('STAND')" disabled class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-black px-5 py-2.5 sm:py-2.5 rounded-xl text-xs uppercase shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition">
-        ✋ STAND
+      <button id="standBtn" onclick="sendOrRunAction('STAND')" disabled class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-black px-3 sm:px-5 py-2.5 rounded-xl text-xs uppercase shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center justify-center gap-1">
+        <span>✋</span> STAND
+      </button>
+
+      <!-- TOMBOL SPLIT (Hanya Aktif Jika Memenuhi Syarat Card Same Value) -->
+      <button id="splitBtn" onclick="sendOrRunAction('SPLIT')" disabled class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-black px-3 sm:px-5 py-2.5 rounded-xl text-xs uppercase shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center justify-center gap-1">
+        <span>✂️</span> SPLIT
       </button>
 
       <!-- Host Manual Actions -->
@@ -242,6 +225,18 @@
       </button>
     </div>
   </footer>
+
+  <!-- ==================== POP-UP HASIL GAME (RESULT MODAL) ==================== -->
+  <div id="gameResultModal" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden z-50">
+    <div class="bg-slate-900 border-2 border-amber-500/50 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl relative overflow-hidden">
+      <div id="resultModalIcon" class="text-5xl mb-2">🏆</div>
+      <h2 id="resultModalTitle" class="text-xl font-black text-amber-400 font-cinzel mb-1">RONDE SELESAI</h2>
+      <div id="resultModalBody" class="text-sm text-slate-200 my-4 space-y-2 max-h-60 overflow-y-auto"></div>
+      <button onclick="closeResultModal()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-xs uppercase shadow-lg transition active:scale-95">
+        TUTUP & KEMBALI KE MEJA
+      </button>
+    </div>
+  </div>
 
   <!-- MODAL BUAT ROOM (NAMA BANDAR) -->
   <div id="createHostModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
@@ -300,6 +295,7 @@
     let turnTimer = 20;
     let timerInterval = null;
     let targetSeatForJoin = null;
+    let lastShownEndPhaseModal = false;
 
     let currentPOV = 'HOST';
 
@@ -477,6 +473,7 @@
       renderSeats();
       renderBankerCards();
       updateControls();
+      checkAndShowResultModal();
     }
 
     function applySyncedState(state) {
@@ -494,8 +491,9 @@
       updateControls();
 
       if (gamePhase === 'PLAYERS_TURN' && activeSeatTurn !== -1 && seats[activeSeatTurn]) {
+        lastShownEndPhaseModal = false; // Reset pop-up flag when new round starts
         if (mySeatIndex === activeSeatTurn) {
-          document.getElementById('statusNotice').innerText = `⭐ GILIRAN ANDA (${seats[activeSeatTurn].name})! Pilih HIT / STAND.`;
+          document.getElementById('statusNotice').innerText = `⭐ GILIRAN ANDA (${seats[activeSeatTurn].name})! Pilih HIT / STAND / SPLIT.`;
         } else {
           document.getElementById('statusNotice').innerText = `Giliran ${seats[activeSeatTurn].name} bertindak...`;
         }
@@ -503,9 +501,83 @@
         document.getElementById('statusNotice').innerText = `Giliran Bandar bertindak.`;
       } else if (gamePhase === 'END') {
         document.getElementById('statusNotice').innerText = `Ronde Selesai! Poin diperbarui.`;
+        checkAndShowResultModal();
       } else if (gamePhase === 'LOBBY') {
+        lastShownEndPhaseModal = false;
         document.getElementById('statusNotice').innerText = `Room ${rawRoomCode} Siap! Silakan DUDUK SINI.`;
       }
+    }
+
+    function checkAndShowResultModal() {
+      if (gamePhase === 'END' && !lastShownEndPhaseModal) {
+        lastShownEndPhaseModal = true;
+        showResultModal();
+      }
+    }
+
+    function showResultModal() {
+      const modal = document.getElementById('gameResultModal');
+      const icon = document.getElementById('resultModalIcon');
+      const title = document.getElementById('resultModalTitle');
+      const body = document.getElementById('resultModalBody');
+
+      if (isHost) {
+        // BANDAR POV POP-UP (REKAP SEMUA PLAYER)
+        icon.innerText = "👑";
+        title.innerText = "HASIL RONDE BANDAR";
+        
+        const activePlayers = seats.filter(s => s !== null);
+        if (activePlayers.length === 0) {
+          body.innerHTML = "<p class='text-slate-400'>Belum ada pemain di meja.</p>";
+        } else {
+          let listHTML = activePlayers.map(s => {
+            let color = s.status.includes('MENANG') ? 'text-emerald-400 font-bold' : 
+                        s.status.includes('KALAH') ? 'text-rose-400 font-bold' : 'text-slate-300 font-semibold';
+            return `<div class="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <span class="font-bold text-slate-200">${s.name}</span>
+              <span class="${color}">${s.status}</span>
+            </div>`;
+          }).join('');
+          body.innerHTML = `<p class="text-xs text-slate-400 mb-2">Rekap Hasil Pertandingan Pemain:</p>` + listHTML;
+        }
+      } else {
+        // PLAYER POV POP-UP (TAILORED FOR MY SEAT)
+        if (mySeatIndex !== null && seats[mySeatIndex]) {
+          const mySeat = seats[mySeatIndex];
+          if (mySeat.status.includes('MENANG')) {
+            icon.innerText = "🎉";
+            title.innerText = "SELAMAT! ANDA MENANG";
+            body.innerHTML = `<div class="bg-emerald-950/80 border border-emerald-500/40 p-4 rounded-2xl text-emerald-300">
+              <p class="text-base font-extrabold">+2 POIN DITAMBAHKAN</p>
+              <p class="text-xs text-slate-300 mt-1">Kartu Anda berhasil mengalahkan Bandar!</p>
+            </div>`;
+          } else if (mySeat.status.includes('KALAH')) {
+            icon.innerText = "💥";
+            title.innerText = "SAYANG SEKALI! ANDA KALAH";
+            body.innerHTML = `<div class="bg-rose-950/80 border border-rose-500/40 p-4 rounded-2xl text-rose-300">
+              <p class="text-base font-extrabold">-2 POIN DIKURANGI</p>
+              <p class="text-xs text-slate-300 mt-1">Tetap semangat! Coba lagi di ronde berikutnya.</p>
+            </div>`;
+          } else {
+            icon.innerText = "🤝";
+            title.innerText = "HASIL SERI (PUSH)";
+            body.innerHTML = `<div class="bg-slate-800 border border-slate-700 p-4 rounded-2xl text-slate-200">
+              <p class="text-base font-extrabold">0 POIN (TIDAK BERUBAH)</p>
+              <p class="text-xs text-slate-400 mt-1">Nilai kartu Anda sama dengan Bandar.</p>
+            </div>`;
+          }
+        } else {
+          icon.innerText = "👀";
+          title.innerText = "RONDE SELESAI";
+          body.innerHTML = "<p class='text-slate-400 text-xs'>Ronde telah berakhir. Silakan tunggu ronde selanjutnya!</p>";
+        }
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeResultModal() {
+      document.getElementById('gameResultModal').classList.add('hidden');
     }
 
     function handleGuestAction(actionObj, conn) {
@@ -516,6 +588,9 @@
         seats[payload.seatIndex] = {
           name: payload.name,
           cards: [],
+          splitHand: null,
+          isSplit: false,
+          activeSplitIndex: 0,
           scorePoints: 0,
           status: 'Menunggu Game'
         };
@@ -530,7 +605,7 @@
     function sendOrRunAction(actionType) {
       if (actionType === 'DEAL') {
         if (isHost) startDeal();
-      } else if (actionType === 'HIT' || actionType === 'STAND') {
+      } else if (actionType === 'HIT' || actionType === 'STAND' || actionType === 'SPLIT') {
         if (mySeatIndex === null) {
           alert('Anda belum duduk di kursi mana pun! Tekan "DUDUK SINI" terlebih dahulu.');
           return;
@@ -557,13 +632,19 @@
       }
     }
 
+    function getCardVal(rank) {
+      if (['J','Q','K'].includes(rank)) return 10;
+      if (rank === 'A') return 11;
+      return parseInt(rank, 10);
+    }
+
     function calculateScore(cards) {
       if (!cards || cards.length === 0) return 0;
       let score = 0, aces = 0;
       cards.forEach(c => {
         if (['J','Q','K'].includes(c.rank)) score += 10;
         else if (c.rank === 'A') { score += 11; aces += 1; }
-        else score += parseInt(c.rank);
+        else score += parseInt(c.rank, 10);
       });
       while (score > 21 && aces > 0) { score -= 10; aces -= 1; }
       return score;
@@ -573,6 +654,11 @@
       const suits = ['♠', '♥', '♦', '♣'];
       const ranks = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
       return { suit: suits[Math.floor(Math.random() * suits.length)], rank: ranks[Math.floor(Math.random() * ranks.length)] };
+    }
+
+    function canSplit(seat) {
+      if (!seat || !seat.cards || seat.cards.length !== 2 || seat.isSplit) return false;
+      return getCardVal(seat.cards[0].rank) === getCardVal(seat.cards[1].rank);
     }
 
     function startDeal() {
@@ -589,6 +675,9 @@
       seats.forEach(s => {
         if (s) {
           s.cards = [getRandomCard(), getRandomCard()];
+          s.splitHand = null;
+          s.isSplit = false;
+          s.activeSplitIndex = 0;
           s.status = 'Giliran...';
         }
       });
@@ -616,21 +705,61 @@
 
       let player = seats[activeSeatTurn];
 
-      if (action === 'HIT') {
-        player.cards.push(getRandomCard());
-        let score = calculateScore(player.cards);
-        if (score > 21) {
-          player.status = 'BUST (>21)';
-          nextPlayerTurn();
-        } else if (score === 21) {
-          player.status = 'BLACKJACK (21)';
-          nextPlayerTurn();
-        } else {
+      if (action === 'SPLIT') {
+        if (canSplit(player)) {
+          player.isSplit = true;
+          player.splitHand = [
+            [player.cards[0], getRandomCard()],
+            [player.cards[1], getRandomCard()]
+          ];
+          player.activeSplitIndex = 0;
+          player.status = 'Split Hand 1';
           startTimer();
         }
+      } else if (action === 'HIT') {
+        if (player.isSplit) {
+          let currentHand = player.splitHand[player.activeSplitIndex];
+          currentHand.push(getRandomCard());
+          let score = calculateScore(currentHand);
+          if (score >= 21) {
+            if (player.activeSplitIndex === 0) {
+              player.activeSplitIndex = 1;
+              player.status = 'Split Hand 2';
+              startTimer();
+            } else {
+              player.status = 'Split Selesai';
+              nextPlayerTurn();
+            }
+          } else {
+            startTimer();
+          }
+        } else {
+          player.cards.push(getRandomCard());
+          let score = calculateScore(player.cards);
+          if (score > 21) {
+            player.status = 'BUST (>21)';
+            nextPlayerTurn();
+          } else if (score === 21) {
+            player.status = 'BLACKJACK (21)';
+            nextPlayerTurn();
+          } else {
+            startTimer();
+          }
+        }
       } else if (action === 'STAND') {
-        player.status = `Total: ${calculateScore(player.cards)}`;
-        nextPlayerTurn();
+        if (player.isSplit) {
+          if (player.activeSplitIndex === 0) {
+            player.activeSplitIndex = 1;
+            player.status = 'Split Hand 2';
+            startTimer();
+          } else {
+            player.status = 'Split Selesai';
+            nextPlayerTurn();
+          }
+        } else {
+          player.status = `Total: ${calculateScore(player.cards)}`;
+          nextPlayerTurn();
+        }
       }
 
       broadcastState();
@@ -691,18 +820,40 @@
 
       seats.forEach(s => {
         if (s) {
-          let pScore = calculateScore(s.cards);
-          if (pScore > 21) {
-            s.status = 'KALAH (-2)';
-            s.scorePoints -= 2;
-          } else if (bankerScore > 21 || pScore > bankerScore) {
-            s.status = 'MENANG (+2)';
-            s.scorePoints += 2;
-          } else if (pScore < bankerScore) {
-            s.status = 'KALAH (-2)';
-            s.scorePoints -= 2;
+          if (s.isSplit) {
+            let score1 = calculateScore(s.splitHand[0]);
+            let score2 = calculateScore(s.splitHand[1]);
+            let winCount = 0, loseCount = 0;
+
+            [score1, score2].forEach(pScore => {
+              if (pScore > 21) loseCount++;
+              else if (bankerScore > 21 || pScore > bankerScore) winCount++;
+              else if (pScore < bankerScore) loseCount++;
+            });
+
+            if (winCount > loseCount) {
+              s.status = 'MENANG (+2)';
+              s.scorePoints += 2;
+            } else if (loseCount > winCount) {
+              s.status = 'KALAH (-2)';
+              s.scorePoints -= 2;
+            } else {
+              s.status = 'SERI (0)';
+            }
           } else {
-            s.status = 'SERI (0)';
+            let pScore = calculateScore(s.cards);
+            if (pScore > 21) {
+              s.status = 'KALAH (-2)';
+              s.scorePoints -= 2;
+            } else if (bankerScore > 21 || pScore > bankerScore) {
+              s.status = 'MENANG (+2)';
+              s.scorePoints += 2;
+            } else if (pScore < bankerScore) {
+              s.status = 'KALAH (-2)';
+              s.scorePoints -= 2;
+            } else {
+              s.status = 'SERI (0)';
+            }
           }
         }
       });
@@ -747,12 +898,43 @@
             div.classList.add('border-amber-400', 'ring-2', 'ring-amber-400/30');
           }
 
-          let cardsHTML = seat.cards.map(c => `
-            <div class="card card-face flex flex-col justify-between p-1 font-bold text-[11px] sm:text-xs select-none">
-              <span class="${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.rank}${c.suit}</span>
-              <span class="text-center text-sm sm:text-lg ${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.suit}</span>
-            </div>
-          `).join('');
+          let cardsHTML = '';
+          let totalScoreBadge = '';
+
+          if (seat.isSplit) {
+            let h1Cards = seat.splitHand[0].map(c => `
+              <div class="card card-face flex flex-col justify-between p-1 font-bold text-[10px] select-none">
+                <span class="${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.rank}${c.suit}</span>
+                <span class="text-center text-xs ${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.suit}</span>
+              </div>
+            `).join('');
+            let h2Cards = seat.splitHand[1].map(c => `
+              <div class="card card-face flex flex-col justify-between p-1 font-bold text-[10px] select-none">
+                <span class="${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.rank}${c.suit}</span>
+                <span class="text-center text-xs ${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.suit}</span>
+              </div>
+            `).join('');
+
+            cardsHTML = `
+              <div class="flex flex-col gap-1 w-full">
+                <div class="flex gap-1 justify-center items-center p-1 border border-amber-500/20 rounded-lg ${seat.activeSplitIndex === 0 && isTurn ? 'bg-amber-500/10' : ''}">
+                  <span class="text-[9px] font-bold text-amber-300">H1:</span> ${h1Cards}
+                </div>
+                <div class="flex gap-1 justify-center items-center p-1 border border-amber-500/20 rounded-lg ${seat.activeSplitIndex === 1 && isTurn ? 'bg-amber-500/10' : ''}">
+                  <span class="text-[9px] font-bold text-amber-300">H2:</span> ${h2Cards}
+                </div>
+              </div>
+            `;
+            totalScoreBadge = `Total: H1 (${calculateScore(seat.splitHand[0])}) | H2 (${calculateScore(seat.splitHand[1])})`;
+          } else {
+            cardsHTML = seat.cards.map(c => `
+              <div class="card card-face flex flex-col justify-between p-1 font-bold text-[11px] sm:text-xs select-none">
+                <span class="${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.rank}${c.suit}</span>
+                <span class="text-center text-sm sm:text-lg ${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.suit}</span>
+              </div>
+            `).join('');
+            totalScoreBadge = `Total: ${calculateScore(seat.cards)}`;
+          }
 
           let timerBadge = isTurn ? `<span class="bg-amber-500 text-slate-950 font-black text-[10px] w-4 h-4 sm:w-5 sm:h-5 rounded-full inline-flex items-center justify-center">${turnTimer}</span>` : '';
           let isMeTag = (mySeatIndex === idx) ? ` <span class="text-[8px] bg-emerald-500/20 text-emerald-400 px-1 rounded">(Anda)</span>` : '';
@@ -763,6 +945,12 @@
               ${timerBadge}
             </div>
             <div class="flex gap-1 justify-center my-1.5 sm:my-2 cards-scroll overflow-x-auto w-full min-h-[76px] sm:min-h-[100px] items-center">${cardsHTML}</div>
+            
+            <!-- INFORMASI TOTAL NILAI KARTU PEMAIN -->
+            <div class="text-[10px] font-extrabold text-amber-300 bg-slate-950/80 px-2 py-0.5 rounded-md border border-slate-800 w-full mb-0.5">
+              ${totalScoreBadge}
+            </div>
+
             <div class="text-[9px] sm:text-[10px] font-bold ${seat.status.includes('MENANG') ? 'text-emerald-400' : seat.status.includes('KALAH') ? 'text-rose-400' : 'text-slate-400'} truncate w-full">
               ${seat.status}
             </div>
@@ -812,6 +1000,11 @@
       document.getElementById('hitBtn').disabled = !isMyTurnToPlay;
       document.getElementById('standBtn').disabled = !isMyTurnToPlay;
 
+      // SPLIT BUTTON STATE (Hanya Aktif Jika Giliran Saya & Punya 2 Kartu Nilai Sama)
+      const mySeat = (mySeatIndex !== null) ? seats[mySeatIndex] : null;
+      const canSplitCard = isMyTurnToPlay && canSplit(mySeat);
+      document.getElementById('splitBtn').disabled = !canSplitCard;
+
       if (isHost && isBankerTurnPhase) {
         document.getElementById('bankerHitBtn').classList.remove('hidden');
         document.getElementById('bankerStandBtn').classList.remove('hidden');
@@ -855,6 +1048,9 @@
         seats[targetSeatForJoin] = {
           name: name,
           cards: [],
+          splitHand: null,
+          isSplit: false,
+          activeSplitIndex: 0,
           scorePoints: 0,
           status: 'Menunggu Game'
         };
