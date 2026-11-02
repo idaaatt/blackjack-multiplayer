@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blackjack Multiplayer (Canvas Version)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600;800&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f17;
+      color: #f8fafc;
+      user-select: none;
+    }
+    .font-cinzel { font-family: 'Cinzel', serif; }
+
+    /* Visual Kartu Kasino */
+    .card {
+      width: 68px;
+      height: 98px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+    .card-face {
+      background: #ffffff;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+    }
+    .card-back {
+      background: linear-gradient(135deg, #991b1b 0%, #450a0a 100%);
+      border: 2px solid #f59e0b;
+      position: relative;
+    }
+    .card-back::after {
+      content: '♠♥♦♣';
+      position: absolute;
+      inset: 4px;
+      border: 1px dashed rgba(245, 158, 11, 0.4);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(245, 158, 11, 0.3);
+      font-size: 10px;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-3 md:p-6">
+
+  <!-- TOP BAR / HEADER -->
+  <header class="max-w-6xl w-full mx-auto bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-wrap justify-between items-center gap-4 shadow-xl">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">♠️</span>
+        <h1 class="text-xl md:text-2xl font-black text-amber-400 font-cinzel tracking-wider">BLACKJACK ONLINE</h1>
+        <span class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">No Bet Mode</span>
+      </div>
+      <p class="text-xs text-slate-400 mt-0.5">Fixed Banker • POV Security • Catatan Skor (+2 / -2)</p>
+    </div>
+
+    <div class="flex items-center flex-wrap gap-2.5">
+      <!-- Select POV -->
+      <div class="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
+        <span class="text-slate-400 font-semibold mr-2">👁️ POV:</span>
+        <select id="povSelect" onchange="changePOV(this.value)" class="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer">
+          <option value="HOST" class="bg-slate-900 text-amber-400">👑 Bandar (Host POV)</option>
+          <option value="0" class="bg-slate-900 text-slate-200">🪑 Kursi 1</option>
+          <option value="1" class="bg-slate-900 text-slate-200">🪑 Kursi 2</option>
+          <option value="2" class="bg-slate-900 text-slate-200">🪑 Kursi 3</option>
+          <option value="3" class="bg-slate-900 text-slate-200">🪑 Kursi 4</option>
+          <option value="4" class="bg-slate-900 text-slate-200">🪑 Kursi 5</option>
+          <option value="5" class="bg-slate-900 text-slate-200">🪑 Kursi 6</option>
+        </select>
+      </div>
+
+      <!-- Toggle Catatan Poin -->
+      <button onclick="toggleNotesPanel()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow">
+        📋 Catatan Poin
+      </button>
+
+      <!-- Kode Room & Salin Link -->
+      <div class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold px-3 py-1.5 rounded-xl">
+        KODE: <span id="roomCodeText" class="font-mono">BJ-89X2</span>
+      </div>
+      <button onclick="copyRoomLink()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs px-3.5 py-1.5 rounded-xl shadow transition">
+        Salin Link
+      </button>
+    </div>
+  </header>
+
+  <!-- PANEL REKAP CATATAN POIN (MODAL SLIDE/TOGGLE) -->
+  <div id="notesModal" class="hidden max-w-6xl w-full mx-auto my-3 bg-slate-900 border border-amber-500/40 rounded-2xl p-4 shadow-2xl">
+    <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
+      <h3 class="text-amber-400 font-bold text-sm tracking-wide flex items-center gap-2">
+        <span>📋</span> CATATAN POIN PEMAIN (Menang: +2 | Kalah: -2)
+      </h3>
+      <div class="flex items-center gap-3">
+        <button onclick="resetAllScores()" class="text-xs text-rose-400 hover:underline font-semibold">Reset Poin</button>
+        <button onclick="toggleNotesPanel()" class="text-slate-400 hover:text-white font-bold text-sm">✕</button>
+      </div>
+    </div>
+    <div id="scoresContainer" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <!-- Dynamic Scores List -->
+    </div>
+  </div>
+
+  <!-- MAIN FELT CASINO TABLE -->
+  <main class="max-w-6xl w-full mx-auto my-4 flex-1 bg-emerald-950 border-8 border-amber-950/80 rounded-3xl p-4 md:p-6 relative flex flex-col justify-between shadow-2xl min-h-[520px]">
+    
+    <!-- BRANDING LOGO MEJA -->
+    <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
+      <div class="text-center">
+        <div class="text-7xl font-cinzel text-amber-300 font-black tracking-widest">BLACKJACK</div>
+        <div class="text-sm font-bold text-amber-400 tracking-widest uppercase mt-2">Fixed Banker • Private Table</div>
+      </div>
+    </div>
+
+    <!-- AREA BANDAR (TOP) -->
+    <div class="relative z-10 flex flex-col items-center">
+      <div class="bg-slate-900/90 border border-amber-500/50 rounded-2xl p-4 text-center min-w-[240px] shadow-2xl backdrop-blur">
+        <div class="inline-block bg-amber-500 text-slate-950 text-[10px] font-black px-3 py-0.5 rounded-full uppercase tracking-wider mb-1">
+          Bandar Tetap (Host)
+        </div>
+        <div class="flex items-center justify-center gap-2">
+          <h2 id="bankerName" class="font-extrabold text-amber-400 text-sm">Bandar Room</h2>
+          <span id="bankerTimer" class="hidden bg-amber-500 text-slate-950 text-xs font-black w-6 h-6 rounded-full inline-flex items-center justify-center shadow">20</span>
+        </div>
+
+        <!-- Kartu Bandar -->
+        <div id="bankerCardsArea" class="flex justify-center gap-2 my-3 min-h-[100px] items-center"></div>
+
+        <div id="bankerScoreText" class="text-xs font-bold text-slate-300">Total: -</div>
+      </div>
+    </div>
+
+    <!-- STATUS LOG BAR (MIDDLE) -->
+    <div class="relative z-10 text-center my-3">
+      <div id="statusNotice" class="inline-block bg-slate-900/90 border border-slate-700/80 px-5 py-2 rounded-full text-xs font-bold text-amber-300 shadow-xl backdrop-blur">
+        Silakan duduk di salah satu kursi untuk bergabung!
+      </div>
+    </div>
+
+    <!-- AREA KURSI PEMAIN (BOTTOM - 6 SEATS) -->
+    <div id="seatsGrid" class="relative z-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+      <!-- 6 Seats rendered by JS -->
+    </div>
+
+  </main>
+
+  <!-- CONTROLS FOOTER -->
+  <footer class="max-w-6xl w-full mx-auto bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-wrap justify-between items-center gap-3 shadow-xl">
+    <div class="text-xs text-slate-400 font-semibold flex items-center gap-2">
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+      Status Game: <span id="gamePhaseText" class="text-amber-400 font-bold">Lobby (Menunggu Pemain)</span>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-wrap gap-2">
+      <button id="dealBtn" onclick="startDeal()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs uppercase shadow-lg transition active:scale-95">
+        🎴 Bagikan Kartu (Deal)
+      </button>
+      <button id="hitBtn" onclick="handlePlayerAction('HIT')" disabled class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 disabled:cursor-not-allowed transition active:scale-95">
+        Hit
+      </button>
+      <button id="standBtn" onclick="handlePlayerAction('STAND')" disabled class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 disabled:cursor-not-allowed transition active:scale-95">
+        Stand
+      </button>
+      <button id="splitBtn" onclick="handlePlayerAction('SPLIT')" disabled class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 disabled:cursor-not-allowed transition active:scale-95">
+        Split
+      </button>
+
+      <!-- Host Manual Actions -->
+      <button id="bankerHitBtn" onclick="handleBankerAction('HIT')" disabled class="hidden bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 transition">
+        Hit Bandar
+      </button>
+      <button id="bankerStandBtn" onclick="handleBankerAction('STAND')" disabled class="hidden bg-slate-700 hover:bg-slate-600 text-amber-300 font-bold px-4 py-2.5 rounded-xl text-xs uppercase disabled:opacity-30 transition">
+        Stand Bandar
+      </button>
+    </div>
+  </footer>
+
+  <!-- MODAL DUDUK SINI (NAMA PEMAIN) -->
+  <div id="joinSeatModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+    <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+      <h3 class="text-lg font-bold text-amber-400 font-cinzel mb-1">Duduk di Meja</h3>
+      <p class="text-xs text-slate-400 mb-4">Masukkan nama Anda untuk menempati <span id="modalSeatTitle" class="text-amber-300 font-bold">Kursi 1</span>:</p>
+      <input type="text" id="playerNameInput" placeholder="Contoh: Budi, Agus..." class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-xl px-3.5 py-2.5 text-sm mb-4 focus:outline-none focus:border-amber-400">
+      <div class="flex justify-end gap-2">
+        <button onclick="closeJoinModal()" class="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white">Batal</button>
+        <button onclick="confirmJoinSeat()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs shadow">Konfirmasi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    // ROOM & POV STATE
+    const roomCode = 'BJ-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    document.getElementById('roomCodeText').innerText = roomCode;
+
+    let currentPOV = 'HOST'; // 'HOST' or seat index 0..5
+    let seats = Array(6).fill(null);
+    let bankerCards = [];
+    let gamePhase = 'LOBBY'; // LOBBY, PLAYERS_TURN, BANKER_TURN, END
+    let activeSeatTurn = -1;
+    let turnTimer = 20;
+    let timerInterval = null;
+
+    let targetSeatForJoin = null;
+
+    // RENDER SEATS
+    function renderSeats() {
+      const grid = document.getElementById('seatsGrid');
+      grid.innerHTML = '';
+
+      seats.forEach((seat, idx) => {
+        const div = document.createElement('div');
+        div.className = 'bg-slate-900/90 border border-slate-800 rounded-2xl p-3 flex flex-col justify-between items-center text-center relative min-h-[170px] shadow-lg';
+
+        if (!seat) {
+          // Empty Seat
+          div.innerHTML = `
+            <div class="text-[10px] font-bold text-slate-500 tracking-wider">KURSI ${idx + 1}</div>
+            <button onclick="openJoinModal(${idx})" class="my-auto bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold px-3 py-2 rounded-xl transition">
+              DUDUK SINI
+            </button>
+            <div class="text-[9px] text-slate-600">Kosong</div>
+          `;
+        } else {
+          // Occupied Seat
+          const isTurn = (activeSeatTurn === idx && gamePhase === 'PLAYERS_TURN');
+          if (isTurn) {
+            div.classList.add('border-amber-400', 'ring-2', 'ring-amber-400/30');
+          }
+
+          let cardsHTML = seat.cards.map(c => `
+            <div class="card card-face flex flex-col justify-between p-1.5 font-bold text-xs select-none">
+              <span class="${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.rank}${c.suit}</span>
+              <span class="text-center text-lg ${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.suit}</span>
+            </div>
+          `).join('');
+
+          let timerBadge = isTurn ? `<span class="bg-amber-500 text-slate-950 font-black text-[10px] w-5 h-5 rounded-full inline-flex items-center justify-center">${turnTimer}</span>` : '';
+
+          div.innerHTML = `
+            <div class="flex items-center justify-between w-full">
+              <span class="text-xs font-bold text-amber-400 truncate max-w-[80px]">${seat.name}</span>
+              ${timerBadge}
+            </div>
+            <div class="flex gap-1 justify-center my-2 overflow-x-auto w-full min-h-[100px] items-center">${cardsHTML}</div>
+            <div class="text-[10px] font-bold ${seat.status.includes('MENANG') ? 'text-emerald-400' : seat.status.includes('KALAH') ? 'text-rose-400' : 'text-slate-400'}">
+              ${seat.status}
+            </div>
+          `;
+        }
+        grid.appendChild(div);
+      });
+
+      renderScoresTable();
+    }
+
+    function calculateScore(cards) {
+      if (!cards || cards.length === 0) return 0;
+      let score = 0, aces = 0;
+      cards.forEach(c => {
+        if (['J','Q','K'].includes(c.rank)) score += 10;
+        else if (c.rank === 'A') { score += 11; aces += 1; }
+        else score += parseInt(c.rank);
+      });
+      while (score > 21 && aces > 0) { score -= 10; aces -= 1; }
+      return score;
+    }
+
+    function getRandomCard() {
+      const suits = ['♠', '♥', '♦', '♣'];
+      const ranks = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+      return { suit: suits[Math.floor(Math.random() * suits.length)], rank: ranks[Math.floor(Math.random() * ranks.length)] };
+    }
+
+    // JOIN MODAL HANDLERS
+    function openJoinModal(seatIdx) {
+      targetSeatForJoin = seatIdx;
+      document.getElementById('modalSeatTitle').innerText = `Kursi ${seatIdx + 1}`;
+      document.getElementById('playerNameInput').value = '';
+      document.getElementById('joinSeatModal').classList.remove('hidden');
+    }
+
+    function closeJoinModal() {
+      document.getElementById('joinSeatModal').classList.add('hidden');
+    }
+
+    function confirmJoinSeat() {
+      const input = document.getElementById('playerNameInput').value.trim();
+      const name = input || `Pemain ${targetSeatForJoin + 1}`;
+
+      seats[targetSeatForJoin] = {
+        name: name,
+        cards: [],
+        scorePoints: 0,
+        status: 'Menunggu Game'
+      };
+
+      closeJoinModal();
+      renderSeats();
+      document.getElementById('statusNotice').innerText = `${name} telah bergabung di Kursi ${targetSeatForJoin + 1}`;
+    }
+
+    // DEAL CARDS
+    function startDeal() {
+      const activePlayers = seats.filter(s => s !== null);
+      if (activePlayers.length === 0) {
+        alert('Tidak ada pemain di meja! Harap tekan "DUDUK SINI" pada minimal 1 kursi.');
+        return;
+      }
+
+      gamePhase = 'PLAYERS_TURN';
+      bankerCards = [getRandomCard(), getRandomCard()];
+
+      seats.forEach(s => {
+        if (s) {
+          s.cards = [getRandomCard(), getRandomCard()];
+          s.status = 'Giliran...';
+        }
+      });
+
+      // Turn to first active seat
+      activeSeatTurn = seats.findIndex(s => s !== null);
+      
+      renderBankerCards();
+      renderSeats();
+      updateControls();
+      startTimer();
+
+      document.getElementById('gamePhaseText').innerText = 'Giliran Pemain';
+      document.getElementById('statusNotice').innerText = `Ronde dimulai! Giliran ${seats[activeSeatTurn].name}`;
+    }
+
+    function renderBankerCards() {
+      const area = document.getElementById('bankerCardsArea');
+      area.innerHTML = '';
+
+      if (bankerCards.length === 0) return;
+
+      bankerCards.forEach((c, idx) => {
+        // Mask card 2 if gamePhase is PLAYERS_TURN and current POV is not HOST
+        if (idx === 1 && gamePhase === 'PLAYERS_TURN' && currentPOV !== 'HOST') {
+          area.innerHTML += `<div class="card card-back"></div>`;
+        } else {
+          area.innerHTML += `
+            <div class="card card-face flex flex-col justify-between p-1.5 font-bold text-xs select-none">
+              <span class="${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.rank}${c.suit}</span>
+              <span class="text-center text-lg ${['♥','♦'].includes(c.suit) ? 'text-rose-600' : 'text-slate-900'}">${c.suit}</span>
+            </div>
+          `;
+        }
+      });
+
+      if (gamePhase === 'END' || currentPOV === 'HOST') {
+        document.getElementById('bankerScoreText').innerText = `Total: ${calculateScore(bankerCards)}`;
+      } else {
+        document.getElementById('bankerScoreText').innerText = `Total: ${calculateScore([bankerCards[0]])} + ?`;
+      }
+    }
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      turnTimer = 20;
+      timerInterval = setInterval(() => {
+        turnTimer--;
+        renderSeats();
+        if (turnTimer <= 0) {
+          handlePlayerAction('STAND');
+        }
+      }, 1000);
+    }
+
+    function handlePlayerAction(action) {
+      if (activeSeatTurn === -1 || !seats[activeSeatTurn]) return;
+
+      let player = seats[activeSeatTurn];
+
+      if (action === 'HIT') {
+        player.cards.push(getRandomCard());
+        let score = calculateScore(player.cards);
+        if (score > 21) {
+          player.status = 'BUST (>21)';
+          nextPlayerTurn();
+        } else if (score === 21) {
+          player.status = 'BLACKJACK (21)';
+          nextPlayerTurn();
+        } else {
+          startTimer();
+        }
+      } else if (action === 'STAND') {
+        player.status = `Total: ${calculateScore(player.cards)}`;
+        nextPlayerTurn();
+      } else if (action === 'SPLIT') {
+        alert('Aksi Split dieksekusi.');
+        startTimer();
+      }
+
+      renderSeats();
+    }
+
+    function nextPlayerTurn() {
+      clearInterval(timerInterval);
+
+      let nextIdx = -1;
+      for (let i = activeSeatTurn + 1; i < seats.length; i++) {
+        if (seats[i] !== null && seats[i].status.includes('Giliran')) {
+          nextIdx = i;
+          break;
+        }
+      }
+
+      if (nextIdx !== -1) {
+        activeSeatTurn = nextIdx;
+        startTimer();
+        document.getElementById('statusNotice').innerText = `Giliran ${seats[activeSeatTurn].name}`;
+      } else {
+        // Player turns finished -> Banker Turn
+        activeSeatTurn = -1;
+        startBankerTurn();
+      }
+
+      renderSeats();
+      updateControls();
+    }
+
+    function startBankerTurn() {
+      gamePhase = 'BANKER_TURN';
+      document.getElementById('gamePhaseText').innerText = 'Giliran Bandar';
+      renderBankerCards();
+
+      if (currentPOV === 'HOST') {
+        document.getElementById('statusNotice').innerText = 'Giliran Bandar (Host). Pilih Hit Bandar atau Stand Bandar.';
+        startTimer();
+      } else {
+        document.getElementById('statusNotice').innerText = 'Giliran Bandar sedang berjalan...';
+        // Auto Banker Action for Guest POV
+        setTimeout(() => {
+          autoBankerAction();
+        }, 1500);
+      }
+      updateControls();
+    }
+
+    function handleBankerAction(action) {
+      if (action === 'HIT') {
+        bankerCards.push(getRandomCard());
+        renderBankerCards();
+        let bScore = calculateScore(bankerCards);
+        if (bScore >= 21) {
+          finishRound();
+        }
+      } else if (action === 'STAND') {
+        finishRound();
+      }
+    }
+
+    function autoBankerAction() {
+      let bScore = calculateScore(bankerCards);
+      if (bScore < 17) {
+        bankerCards.push(getRandomCard());
+        renderBankerCards();
+        setTimeout(autoBankerAction, 1000);
+      } else {
+        finishRound();
+      }
+    }
+
+    function finishRound() {
+      clearInterval(timerInterval);
+      gamePhase = 'END';
+      document.getElementById('gamePhaseText').innerText = 'Ronde Selesai';
+      renderBankerCards();
+
+      let bankerScore = calculateScore(bankerCards);
+
+      seats.forEach(s => {
+        if (s) {
+          let pScore = calculateScore(s.cards);
+          if (pScore > 21) {
+            s.status = 'KALAH (-2)';
+            s.scorePoints -= 2;
+          } else if (bankerScore > 21 || pScore > bankerScore) {
+            s.status = 'MENANG (+2)';
+            s.scorePoints += 2;
+          } else if (pScore < bankerScore) {
+            s.status = 'KALAH (-2)';
+            s.scorePoints -= 2;
+          } else {
+            s.status = 'SERI (0)';
+          }
+        }
+      });
+
+      renderSeats();
+      updateControls();
+      document.getElementById('statusNotice').innerText = 'Ronde selesai! Skor telah ditambahkan ke Catatan Poin.';
+    }
+
+    function updateControls() {
+      const isPlayerTurnPhase = (gamePhase === 'PLAYERS_TURN');
+      const isBankerTurnPhase = (gamePhase === 'BANKER_TURN');
+
+      document.getElementById('dealBtn').disabled = (isPlayerTurnPhase || isBankerTurnPhase);
+      document.getElementById('hitBtn').disabled = !isPlayerTurnPhase;
+      document.getElementById('standBtn').disabled = !isPlayerTurnPhase;
+      document.getElementById('splitBtn').disabled = !isPlayerTurnPhase;
+
+      if (currentPOV === 'HOST' && isBankerTurnPhase) {
+        document.getElementById('bankerHitBtn').classList.remove('hidden');
+        document.getElementById('bankerStandBtn').classList.remove('hidden');
+        document.getElementById('bankerHitBtn').disabled = false;
+        document.getElementById('bankerStandBtn').disabled = false;
+      } else {
+        document.getElementById('bankerHitBtn').classList.add('hidden');
+        document.getElementById('bankerStandBtn').classList.add('hidden');
+      }
+    }
+
+    function changePOV(val) {
+      currentPOV = val;
+      renderBankerCards();
+      updateControls();
+    }
+
+    function toggleNotesPanel() {
+      document.getElementById('notesModal').classList.toggle('hidden');
+    }
+
+    function renderScoresTable() {
+      const container = document.getElementById('scoresContainer');
+      const activePlayers = seats.filter(s => s !== null);
+
+      if (activePlayers.length === 0) {
+        container.innerHTML = `<p class="text-slate-500 text-xs italic col-span-full">Belum ada pemain aktif di meja.</p>`;
+        return;
+      }
+
+      container.innerHTML = activePlayers.map(s => `
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 flex justify-between items-center">
+          <span class="text-xs font-bold text-slate-200 truncate max-w-[90px]">${s.name}</span>
+          <span class="text-xs font-black ${s.scorePoints > 0 ? 'text-emerald-400' : s.scorePoints < 0 ? 'text-rose-400' : 'text-slate-400'}">
+            ${s.scorePoints > 0 ? '+' + s.scorePoints : s.scorePoints}
+          </span>
+        </div>
+      `).join('');
+    }
+
+    function resetAllScores() {
+      seats.forEach(s => {
+        if (s) s.scorePoints = 0;
+      });
+      renderScoresTable();
+    }
+
+    function copyRoomLink() {
+      navigator.clipboard.writeText(window.location.href);
+      alert('Link Room berhasil disalin!');
+    }
+
+    // INIT
+    renderSeats();
+    updateControls();
+  </script>
+</body>
+</html>
