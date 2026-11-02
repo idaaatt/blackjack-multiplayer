@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Blackjack Online Realtime (Sequential Deal & Universal Deck Shoe)</title>
+  <title>Blackjack Online Realtime (Real Casino Sequential Deal)</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- PeerJS for WebRTC Realtime -->
@@ -113,7 +113,7 @@
 
       <div class="text-4xl mb-2">♠️</div>
       <h1 class="text-2xl md:text-3xl font-black text-amber-400 font-cinzel tracking-wider mb-1">BLACKJACK ONLINE</h1>
-      <p class="text-xs text-slate-400 mb-6">Realtime WebRTC • Sequential Card Deal • Multi-Player</p>
+      <p class="text-xs text-slate-400 mb-6">Realtime WebRTC • Real Casino Deal • Multi-Player</p>
 
       <div class="space-y-3">
         <button onclick="openCreateHostModal()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-4 px-4 rounded-2xl text-xs md:text-sm uppercase shadow-lg transition active:scale-95 flex items-center justify-center gap-2">
@@ -125,7 +125,7 @@
         </button>
       </div>
 
-      <p class="text-[11px] text-slate-500 mt-6">Versi Realtime • Universal Deck Shoe</p>
+      <p class="text-[11px] text-slate-500 mt-6">Versi Realtime • Sequential Casino Animation</p>
     </div>
   </div>
 
@@ -190,7 +190,7 @@
     <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
       <div class="text-center">
         <div class="text-4xl sm:text-7xl font-cinzel text-amber-300 font-black tracking-widest">BLACKJACK</div>
-        <div class="text-[10px] sm:text-sm font-bold text-amber-400 tracking-widest uppercase mt-1">WebRTC Realtime • Sequential Card Deal</div>
+        <div class="text-[10px] sm:text-sm font-bold text-amber-400 tracking-widest uppercase mt-1">WebRTC Realtime • Real Casino Deal</div>
       </div>
     </div>
 
@@ -348,6 +348,10 @@
     let timerInterval = null;
     let targetSeatForJoin = null;
     let lastShownEndPhaseModal = false;
+
+    // STATE UNTUK STAGING DEALING SEQUENTIAL RENDERING
+    let fullStateCache = null;
+    let currentRenderStep = 0;
     let isDealingAnimationInProgress = false;
 
     let currentPOV = 'HOST';
@@ -491,8 +495,8 @@
           hostConnection.on('data', (data) => {
             if (data.type === 'SYNC_STATE') {
               applySyncedState(data.state);
-            } else if (data.type === 'TRIGGER_DEAL_ANIMATION') {
-              playSequentialDealAnimation(data.dealSequence);
+            } else if (data.type === 'TRIGGER_CASINO_DEAL') {
+              playRealCasinoDealSequence(data.dealSteps, data.finalState);
             }
           });
 
@@ -525,13 +529,20 @@
         }
       });
 
-      renderSeats();
-      renderBankerCards();
-      updateControls();
-      checkAndShowResultModal();
+      if (!isDealingAnimationInProgress) {
+        renderSeats();
+        renderBankerCards();
+        updateControls();
+        checkAndShowResultModal();
+      }
     }
 
     function applySyncedState(state) {
+      if (isDealingAnimationInProgress) {
+        fullStateCache = state;
+        return;
+      }
+
       seats = state.seats;
       bankerCards = state.bankerCards;
       if (state.bankerName) {
@@ -655,6 +666,10 @@
       modal.classList.remove('hidden');
     }
 
+    function closeResultModal() {
+      document.getElementById('gameResultModal').classList.add('hidden');
+    }
+
     // ANIMASI TERBANG KARTU TUNGGAL
     function animateSingleCardFly(targetElemId, callback) {
       const deck = document.getElementById('deckContainer');
@@ -679,7 +694,7 @@
 
       flyingCard.style.left = `${targetRect.left + (targetRect.width / 4)}px`;
       flyingCard.style.top = `${targetRect.top + (targetRect.height / 4)}px`;
-      flyingCard.style.transform = 'scale(0.9) rotate(12deg)';
+      flyingCard.style.transform = 'scale(0.9) rotate(10deg)';
       flyingCard.style.opacity = '0.9';
 
       setTimeout(() => {
@@ -687,28 +702,53 @@
         setTimeout(() => {
           flyingCard.remove();
           if (callback) callback();
-        }, 150);
-      }, 300);
+        }, 120);
+      }, 280);
     }
 
-    // PLAY ANIMASI PEMBAGIAN KARTU SECARA BERURUTAN (SATU PER SATU)
-    function playSequentialDealAnimation(dealSequence) {
-      if (!dealSequence || dealSequence.length === 0) return;
+    // PLAY REAL CASINO DEALING ANIMATION (DENGAN KARTU YANG MUNCUL SATU PER SATU DARI KOSONG)
+    function playRealCasinoDealSequence(dealSteps, finalState) {
       isDealingAnimationInProgress = true;
 
-      let idx = 0;
-      function dealNext() {
-        if (idx >= dealSequence.length) {
+      // Kosongkan tampilan awal meja sementara untuk proses animasi berurutan
+      bankerCards = [];
+      seats.forEach(s => {
+        if (s) { s.cards = []; s.splitHand = null; }
+      });
+      renderSeats();
+      renderBankerCards();
+
+      let stepIdx = 0;
+
+      function nextStep() {
+        if (stepIdx >= dealSteps.length) {
           isDealingAnimationInProgress = false;
+          if (finalState) applySyncedState(finalState);
+          else if (fullStateCache) applySyncedState(fullStateCache);
           return;
         }
-        const targetId = dealSequence[idx];
-        idx++;
+
+        const step = dealSteps[stepIdx];
+        stepIdx++;
+
+        const targetId = step.type === 'BANKER' ? 'bankerCardContainer' : `seatBox_${step.seatIdx}`;
+
         animateSingleCardFly(targetId, () => {
-          dealNext();
+          // Render kartu baru tersebut ke UI meja
+          if (step.type === 'BANKER') {
+            bankerCards.push(step.card);
+            renderBankerCards();
+          } else if (step.type === 'PLAYER') {
+            if (seats[step.seatIdx]) {
+              seats[step.seatIdx].cards.push(step.card);
+              renderSeats();
+            }
+          }
+          setTimeout(nextStep, 100);
         });
       }
-      dealNext();
+
+      nextStep();
     }
 
     function handleGuestAction(actionObj, conn) {
@@ -801,13 +841,40 @@
       }
 
       lastShownEndPhaseModal = false;
-
       gamePhase = 'PLAYERS_TURN';
-      bankerCards = [getRandomCard(), getRandomCard()];
 
-      seats.forEach(s => {
+      // 1. Dapatkan semua kartu yang akan dibagikan di ronde ini
+      const newBankerCards = [getRandomCard(), getRandomCard()];
+      const playerDealtCards = {};
+
+      seats.forEach((s, idx) => {
         if (s) {
-          s.cards = [getRandomCard(), getRandomCard()];
+          playerDealtCards[idx] = [getRandomCard(), getRandomCard()];
+        }
+      });
+
+      // 2. Susun LANGKAH PEMBAGIAN REAL CASINO SEQUENTIAL:
+      // Putaran 1: Player 1 -> Player 2 -> ... -> Player N -> Card 1 Bandar
+      // Putaran 2: Player 1 -> Player 2 -> ... -> Player N -> Card 2 Bandar
+      let dealSteps = [];
+
+      // Putaran 1
+      activePlayers.forEach(p => {
+        dealSteps.push({ type: 'PLAYER', seatIdx: p.idx, card: playerDealtCards[p.idx][0] });
+      });
+      dealSteps.push({ type: 'BANKER', card: newBankerCards[0] });
+
+      // Putaran 2
+      activePlayers.forEach(p => {
+        dealSteps.push({ type: 'PLAYER', seatIdx: p.idx, card: playerDealtCards[p.idx][1] });
+      });
+      dealSteps.push({ type: 'BANKER', card: newBankerCards[1] });
+
+      // Update data internal game
+      bankerCards = newBankerCards;
+      seats.forEach((s, idx) => {
+        if (s) {
+          s.cards = playerDealtCards[idx];
           s.splitHand = null;
           s.isSplit = false;
           s.activeSplitIndex = 0;
@@ -815,29 +882,37 @@
         }
       });
 
-      // SUSUN URUTAN ANIMASI BAGIKAN KARTU 1 PER 1 KASINO (ROUND-ROBIN):
-      // Putaran 1: Tiap Pemain dapat 1 kartu -> Bandar dapat 1 kartu
-      // Putaran 2: Tiap Pemain dapat kartu ke-2 -> Bandar dapat kartu ke-2
-      let dealSequence = [];
-      activePlayers.forEach(p => dealSequence.push(`seatBox_${p.idx}`));
-      dealSequence.push('bankerCardContainer');
-      activePlayers.forEach(p => dealSequence.push(`seatBox_${p.idx}`));
-      dealSequence.push('bankerCardContainer');
+      activeSeatTurn = seats.findIndex(s => s !== null);
 
-      // Kirim sinyal animasi ke semua guest
+      const finalState = {
+        seats: seats,
+        bankerCards: bankerCards,
+        bankerName: customHostName,
+        gamePhase: gamePhase,
+        activeSeatTurn: activeSeatTurn,
+        turnTimer: 20
+      };
+
+      // Broadcast animasi ke semua peranti/guest
       guestConnections.forEach(conn => {
-        if (conn.open) conn.send({ type: 'TRIGGER_DEAL_ANIMATION', dealSequence: dealSequence });
+        if (conn.open) {
+          conn.send({
+            type: 'TRIGGER_CASINO_DEAL',
+            dealSteps: dealSteps,
+            finalState: finalState
+          });
+        }
       });
-      playSequentialDealAnimation(dealSequence);
+
+      // Jalankan animasi di peranti Host
+      playRealCasinoDealSequence(dealSteps, finalState);
 
       if (calculateScore(bankerCards) === 21) {
         finishRound();
         return;
       }
 
-      activeSeatTurn = seats.findIndex(s => s !== null);
       startTimer();
-      broadcastState();
     }
 
     function startTimer() {
@@ -867,22 +942,26 @@
           ];
           player.activeSplitIndex = 0;
           player.status = 'Split Hand 1';
-          
-          let seq = [`seatBox_${activeSeatTurn}`, `seatBox_${activeSeatTurn}`];
-          guestConnections.forEach(conn => { if (conn.open) conn.send({ type: 'TRIGGER_DEAL_ANIMATION', dealSequence: seq }); });
-          playSequentialDealAnimation(seq);
+
+          let steps = [
+            { type: 'PLAYER', seatIdx: activeSeatTurn, card: player.splitHand[0][1] },
+            { type: 'PLAYER', seatIdx: activeSeatTurn, card: player.splitHand[1][1] }
+          ];
+          guestConnections.forEach(conn => { if (conn.open) conn.send({ type: 'TRIGGER_CASINO_DEAL', dealSteps: steps }); });
+          playRealCasinoDealSequence(steps);
 
           startTimer();
         }
       } else if (action === 'HIT') {
-        let targetId = `seatBox_${activeSeatTurn}`;
-        let seq = [targetId];
-        guestConnections.forEach(conn => { if (conn.open) conn.send({ type: 'TRIGGER_DEAL_ANIMATION', dealSequence: seq }); });
-        playSequentialDealAnimation(seq);
+        let newCard = getRandomCard();
+        let step = [{ type: 'PLAYER', seatIdx: activeSeatTurn, card: newCard }];
+        
+        guestConnections.forEach(conn => { if (conn.open) conn.send({ type: 'TRIGGER_CASINO_DEAL', dealSteps: step }); });
+        playRealCasinoDealSequence(step);
 
         if (player.isSplit) {
           let currentHand = player.splitHand[player.activeSplitIndex];
-          currentHand.push(getRandomCard());
+          currentHand.push(newCard);
           let score = calculateScore(currentHand);
           if (score >= 21) {
             if (player.activeSplitIndex === 0) {
@@ -897,7 +976,7 @@
             startTimer();
           }
         } else {
-          player.cards.push(getRandomCard());
+          player.cards.push(newCard);
           let score = calculateScore(player.cards);
           if (score > 21) {
             player.status = 'BUST (>21)';
@@ -961,11 +1040,12 @@
     function handleBankerAction(action) {
       if (!isHost) return;
       if (action === 'HIT') {
-        let seq = ['bankerCardContainer'];
-        guestConnections.forEach(conn => { if (conn.open) conn.send({ type: 'TRIGGER_DEAL_ANIMATION', dealSequence: seq }); });
-        playSequentialDealAnimation(seq);
+        let newCard = getRandomCard();
+        let step = [{ type: 'BANKER', card: newCard }];
+        guestConnections.forEach(conn => { if (conn.open) conn.send({ type: 'TRIGGER_CASINO_DEAL', dealSteps: step }); });
+        playRealCasinoDealSequence(step);
 
-        bankerCards.push(getRandomCard());
+        bankerCards.push(newCard);
         let bScore = calculateScore(bankerCards);
         if (bScore >= 21) {
           finishRound();
@@ -1160,9 +1240,9 @@
       const isBankerTurnPhase = (gamePhase === 'BANKER_TURN');
 
       document.getElementById('dealBtn').style.display = isHost ? 'inline-block' : 'none';
-      document.getElementById('dealBtn').disabled = (isPlayerTurnPhase || isBankerTurnPhase);
+      document.getElementById('dealBtn').disabled = (isPlayerTurnPhase || isBankerTurnPhase || isDealingAnimationInProgress);
 
-      const isMyTurnToPlay = (mySeatIndex !== null && activeSeatTurn === mySeatIndex && isPlayerTurnPhase);
+      const isMyTurnToPlay = (mySeatIndex !== null && activeSeatTurn === mySeatIndex && isPlayerTurnPhase && !isDealingAnimationInProgress);
 
       document.getElementById('hitBtn').disabled = !isMyTurnToPlay;
       document.getElementById('standBtn').disabled = !isMyTurnToPlay;
@@ -1174,8 +1254,8 @@
       if (isHost && isBankerTurnPhase) {
         document.getElementById('bankerHitBtn').classList.remove('hidden');
         document.getElementById('bankerStandBtn').classList.remove('hidden');
-        document.getElementById('bankerHitBtn').disabled = false;
-        document.getElementById('bankerStandBtn').disabled = false;
+        document.getElementById('bankerHitBtn').disabled = isDealingAnimationInProgress;
+        document.getElementById('bankerStandBtn').disabled = isDealingAnimationInProgress;
       } else {
         document.getElementById('bankerHitBtn').classList.add('hidden');
         document.getElementById('bankerStandBtn').classList.add('hidden');
